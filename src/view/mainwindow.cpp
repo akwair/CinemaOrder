@@ -11,7 +11,17 @@
 #include <QInputDialog>
 #include <QFileDialog>
 #include <QMessageBox>
+#include <QDockWidget>
+#include <QPushButton>
+#include <QVBoxLayout>
+#include <QStyle>
+#include <QApplication>
+#include <QFont>
+#include <QPropertyAnimation>
+#include <QGraphicsOpacityEffect>
+#include <QSettings>
 #include "../controller/ticketcontroller.h"
+#include "ticketformdialog.h"
 #include <QSqlError>
 #include <QLineEdit>
 #include <QStringList>
@@ -34,25 +44,64 @@ MainWindow::MainWindow(Database &db, TicketController &controller, QWidget *pare
     view->verticalHeader()->setVisible(false);
     view->setAlternatingRowColors(true);
     view->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    view->verticalHeader()->setDefaultSectionSize(36); // row height
+    QFont f = view->font(); f.setPointSize(10); view->setFont(f);
     setCentralWidget(view);
 
-    auto *tb = addToolBar("main");
-    auto *actAdd = tb->addAction("新增"); connect(actAdd, &QAction::triggered, this, &MainWindow::onAdd);
-    auto *actDel = tb->addAction("删除"); connect(actDel, &QAction::triggered, this, &MainWindow::onDelete);
-    auto *actSell = tb->addAction("售票"); connect(actSell, &QAction::triggered, this, &MainWindow::onSell);
-    auto *actRefund = tb->addAction("退票"); connect(actRefund, &QAction::triggered, this, &MainWindow::onRefund);
-    tb->addSeparator();
-    auto *actImport = tb->addAction("导入"); connect(actImport, &QAction::triggered, this, &MainWindow::onImport);
-    auto *actExport = tb->addAction("导出"); connect(actExport, &QAction::triggered, this, &MainWindow::onExport);
-    tb->addSeparator();
-    auto *actSearch = tb->addAction("查找"); connect(actSearch, &QAction::triggered, this, &MainWindow::onSearch);
-    auto *actSort = tb->addAction("排序"); connect(actSort, &QAction::triggered, this, &MainWindow::onSort);
-    tb->addSeparator();
-    auto *actExit = tb->addAction("退出"); connect(actExit, &QAction::triggered, this, &QMainWindow::close);
+    // Create a left sidebar (dock) with main actions and theme toggle
+    m_sideDock = new QDockWidget(tr("功能"), this);
+    m_sideDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
+    QWidget *sideWidget = new QWidget(this);
+    QVBoxLayout *sideLayout = new QVBoxLayout(sideWidget);
+
+    auto addButton = [&](const QString &text, const QIcon &icon, const char *slot){
+        QPushButton *b = new QPushButton(icon, text, this);
+        b->setIconSize(QSize(20,20));
+        b->setMinimumHeight(38);
+        b->setCursor(Qt::PointingHandCursor);
+        sideLayout->addWidget(b);
+        connect(b, SIGNAL(clicked()), this, slot);
+        return b;
+    };
+
+    // use style standard icons for portability
+    QStyle *st = QApplication::style();
+    addButton(tr("新增"), QIcon("/:/icons/add.svg"), SLOT(onAdd()));
+    addButton(tr("删除"), QIcon("/:/icons/delete.svg"), SLOT(onDelete()));
+    addButton(tr("售票"), QIcon("/:/icons/sell.svg"), SLOT(onSell()));
+    addButton(tr("退票"), QIcon("/:/icons/refund.svg"), SLOT(onRefund()));
+    sideLayout->addSpacing(8);
+    addButton(tr("导入"), QIcon("/:/icons/import.svg"), SLOT(onImport()));
+    addButton(tr("导出"), QIcon("/:/icons/export.svg"), SLOT(onExport()));
+    sideLayout->addSpacing(8);
+    addButton(tr("查找"), QIcon("/:/icons/search.svg"), SLOT(onSearch()));
+    addButton(tr("排序"), QIcon("/:/icons/sort.svg"), SLOT(onSort()));
+
+    sideLayout->addStretch();
+    // theme toggle
+    QPushButton *themeBtn = new QPushButton(QIcon("/:/icons/theme.svg"), tr("切换主题"), this);
+    themeBtn->setMinimumHeight(36);
+    connect(themeBtn, &QPushButton::clicked, this, &MainWindow::onToggleTheme);
+    sideLayout->addWidget(themeBtn);
+
+    sideWidget->setLayout(sideLayout);
+    m_sideDock->setWidget(sideWidget);
+    addDockWidget(Qt::LeftDockWidgetArea, m_sideDock);
 
     setWindowTitle("电影票管理");
     statusBar()->showMessage("就绪");
     setMinimumSize(800, 480);
+
+    // prepare fade animation for theme transition
+    m_opEffect = new QGraphicsOpacityEffect(this);
+    this->setGraphicsEffect(m_opEffect);
+    m_fadeAnim = new QPropertyAnimation(m_opEffect, "opacity", this);
+    m_fadeAnim->setDuration(220);
+
+    // settings for theme persistence
+    m_settings = new QSettings("CinemaOrder", "CinemaApp", this);
+    m_darkTheme = m_settings->value("ui/dark", false).toBool();
+    if (m_darkTheme) onToggleTheme();
 }
 
 void MainWindow::refresh()
@@ -62,27 +111,20 @@ void MainWindow::refresh()
 
 void MainWindow::onAdd()
 {
-    bool ok;
-    QString movie = QInputDialog::getText(this, "新增", "电影名称:", QLineEdit::Normal, QString(), &ok);
-    if (!ok || movie.isEmpty()) return;
-    QString cinema = QInputDialog::getText(this, "新增", "影院名称:", QLineEdit::Normal, QString(), &ok); if (!ok) return;
-    QString date = QInputDialog::getText(this, "新增", "放映日期 (YYYY-MM-DD):", QLineEdit::Normal, QString(), &ok); if (!ok) return;
-    QString time = QInputDialog::getText(this, "新增", "放映时间 (HH:MM):", QLineEdit::Normal, QString(), &ok); if (!ok) return;
-    int duration = QInputDialog::getInt(this, "新增", "电影时长(分钟):", 120, 1, 10000, 1, &ok); if (!ok) return;
-    double price = QInputDialog::getDouble(this, "新增", "票价:", 60, 0, 100000, 2, &ok); if (!ok) return;
-    QString hall = QInputDialog::getText(this, "新增", "放映厅:", QLineEdit::Normal, QString(), &ok); if (!ok) return;
-    int capacity = QInputDialog::getInt(this, "新增", "座位容量:", 100, 1, 100000, 1, &ok); if (!ok) return;
-
+    // Use TicketFormDialog for a nicer add form
+    TicketFormDialog dlg(this);
+    if (dlg.exec() != QDialog::Accepted) return;
+    Ticket t = dlg.ticket();
     QSqlQuery q(m_model->database());
     q.prepare("INSERT INTO tickets (movieName,cinemaName,showDate,showTime,duration,price,hall,capacity,sold) VALUES (?,?,?,?,?,?,?,?,?)");
-    q.addBindValue(movie);
-    q.addBindValue(cinema);
-    q.addBindValue(date);
-    q.addBindValue(time);
-    q.addBindValue(duration);
-    q.addBindValue(price);
-    q.addBindValue(hall);
-    q.addBindValue(capacity);
+    q.addBindValue(t.movieName);
+    q.addBindValue(t.cinemaName);
+    q.addBindValue(t.showDate);
+    q.addBindValue(t.showTime);
+    q.addBindValue(t.duration);
+    q.addBindValue(t.price);
+    q.addBindValue(t.hall);
+    q.addBindValue(t.capacity);
     q.addBindValue(0);
     if (!q.exec()) QMessageBox::warning(this, "错误", q.lastError().text());
     refresh();
@@ -159,4 +201,38 @@ void MainWindow::onSort()
     if (!ok || choice.isEmpty()) return;
     m_model->setSort(m_model->fieldIndex(choice), Qt::AscendingOrder);
     refresh();
+}
+
+void MainWindow::onToggleTheme()
+{
+    // fade out, switch stylesheet, fade in
+    bool targetDark = !m_darkTheme;
+    m_fadeAnim->stop();
+    m_fadeAnim->setStartValue(1.0); m_fadeAnim->setEndValue(0.0);
+    connect(m_fadeAnim, &QPropertyAnimation::finished, this, [this, targetDark]() {
+        if (targetDark) {
+            qApp->setStyleSheet(R"(
+                QMainWindow { background: #2b2b2b; color: #ddd; }
+                QTableView { background: #232323; color: #ddd; gridline-color: #444; selection-background-color: #3a7bd5; }
+                QHeaderView::section { background: #2f2f2f; color: #ddd; }
+                QPushButton { background: #3a3a3a; color: #fff; border: 1px solid #444; }
+                QPushButton:hover { background: #4a4a4a; }
+            )");
+        } else {
+            qApp->setStyleSheet(R"(
+                QMainWindow { background: #f7f9fc; color: #222; }
+                QTableView { background: #fff; color: #222; gridline-color: #e6eef8; selection-background-color: #87cefa; }
+                QHeaderView::section { background: #e9f2fb; color: #222; }
+                QPushButton { background: transparent; color: #222; border: 1px solid #d0d8e8; }
+                QPushButton:hover { background: #eef6ff; }
+            )");
+        }
+        // set back to visible
+        m_fadeAnim->setStartValue(0.0); m_fadeAnim->setEndValue(1.0);
+        m_fadeAnim->disconnect();
+        m_fadeAnim->start();
+    });
+    m_fadeAnim->start();
+    m_darkTheme = targetDark;
+    m_settings->setValue("ui/dark", m_darkTheme);
 }

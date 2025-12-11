@@ -17,8 +17,15 @@ private slots:
     void onExport();
     void onSearch();
     void onSort();
+    void onToggleTheme();
 private:
     TicketController &m_ctrl;
     QSqlTableModel *m_model;
     void refresh();
+    // UI helpers
+    class QDockWidget *m_sideDock = nullptr;
+    bool m_darkTheme = false;
+    class QPropertyAnimation *m_fadeAnim = nullptr;
+    class QGraphicsOpacityEffect *m_opEffect = nullptr;
+    class QSettings *m_settings = nullptr;
 };
