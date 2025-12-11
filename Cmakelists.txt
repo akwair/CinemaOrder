@@ -1,0 +1,45 @@
+cmake_minimum_required(VERSION 3.16)
+project(CinemaOrder LANGUAGES CXX)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# Enable automatic MOC for QObject/Q_SIGNALS/Q_SLOTS
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTORCC ON)
+set(CMAKE_AUTOUIC ON)
+
+option(QT_ROOT "Path to Qt installation root (e.g. /mingw64)" "")
+
+# Try to auto-detect common MSYS2/Mingw-w64 Qt installation if not provided
+if(NOT QT_ROOT)
+	if(DEFINED ENV{MINGW_PREFIX})
+		set(QT_ROOT $ENV{MINGW_PREFIX})
+	elseif(EXISTS "/mingw64")
+		set(QT_ROOT "/mingw64")
+	elseif(EXISTS "C:/msys64/mingw64")
+		set(QT_ROOT "C:/msys64/mingw64")
+	endif()
+endif()
+
+if(QT_ROOT)
+	list(APPEND CMAKE_PREFIX_PATH "${QT_ROOT}/lib/cmake/Qt6" "${QT_ROOT}/lib/cmake")
+	message(STATUS "Using QT_ROOT=${QT_ROOT}")
+endif()
+
+find_package(Qt6 COMPONENTS Core Sql Widgets QUIET)
+if(NOT Qt6_FOUND)
+	# Final attempt: try explicit common MSYS2 paths
+	if(EXISTS "/mingw64/lib/cmake/Qt6")
+		list(APPEND CMAKE_PREFIX_PATH "/mingw64/lib/cmake/Qt6")
+	endif()
+	find_package(Qt6 REQUIRED COMPONENTS Core Sql Widgets)
+endif()
+
+file(GLOB_RECURSE SRC_FILES src/*.cpp)
+
+add_executable(cinema_order ${SRC_FILES})
+target_include_directories(cinema_order PRIVATE src)
+target_link_libraries(cinema_order Qt6::Core Qt6::Sql Qt6::Widgets)
+
+message(STATUS "Qt6_DIR=${Qt6_DIR}")
