@@ -1,5 +1,0 @@
-D:/CinemaOrder/build/CMakeFiles/cinema_order.dir
-D:/CinemaOrder/build/CMakeFiles/edit_cache.dir
-D:/CinemaOrder/build/CMakeFiles/rebuild_cache.dir
-D:/CinemaOrder/build/CMakeFiles/cinema_order_autogen_timestamp_deps.dir
-D:/CinemaOrder/build/CMakeFiles/cinema_order_autogen.dir

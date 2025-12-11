@@ -1,0 +1,89 @@
+# ------------------------------------
+# 1. CMake / Build Artifacts
+# ------------------------------------
+# 忽略 CMake 生成的构建目录
+/build/
+/Build/
+/cmake-build*/
+
+# 忽略临时或缓存文件
+*.gcda
+*.gcno
+*.o
+*.obj
+*.so
+*.a
+*.lib
+*.dll
+*.exe
+*.out
+*.app
+*.pdb
+*.exp
+*.ilk
+
+# CMake 缓存和临时文件
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+install_manifest.txt
+CTestTestfile.cmake
+.cmake/
+
+# ------------------------------------
+# 2. Qt Specific Files
+# ------------------------------------
+# 忽略 Qt 元对象编译器 (MOC) 生成的文件
+moc_*.cpp
+moc_*.h
+qrc_*.cpp
+ui_*.h
+
+# 忽略 Qt 资源文件编译后的目标文件
+*_qrc.cpp
+*_qrc.o
+*_qrc.obj
+
+# 忽略 Qt 调试/发布目录（通常包含在 /build/ 中，但单独列出以防万一）
+/debug/
+/release/
+
+# ------------------------------------
+# 3. IDE / Editor Files
+# ------------------------------------
+# Visual Studio / VS Code
+.vs/
+*.sln
+*.vcxproj*
+.vscode/
+
+# Qt Creator
+*.pro.user
+*.pro.user.*
+*.creator
+*.autosave
+
+# CLion
+.idea/
+
+# Xcode
+.xcodeproj/
+xcuserdata/
+
+# Eclipse
+.project
+.cproject
+.settings/
+
+# ------------------------------------
+# 4. Operating System Files
+# ------------------------------------
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+
+# Linux
+*~
+\#*

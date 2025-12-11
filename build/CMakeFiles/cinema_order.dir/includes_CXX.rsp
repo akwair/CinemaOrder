@@ -1,1 +1,0 @@
--ID:/CinemaOrder/build/cinema_order_autogen/include -ID:/CinemaOrder/src -isystem D:/msys2/mingw64/include/qt6/QtCore -isystem D:/msys2/mingw64/include/qt6 -isystem "D:/msys2/mingw64/share/qt6/mkspecs/win32-g++" -isystem D:/msys2/mingw64/include/qt6/QtSql -isystem D:/msys2/mingw64/include/qt6/QtWidgets -isystem D:/msys2/mingw64/include/qt6/QtGui
