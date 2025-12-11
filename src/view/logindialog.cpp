@@ -12,13 +12,14 @@ LoginDialog::LoginDialog(AuthManager &auth, QWidget *parent)
     : QDialog(parent), m_auth(auth)
 {
     setWindowTitle("登录");
+    resize(500, 250);
     auto *lay = new QVBoxLayout(this);
     auto *userRow = new QHBoxLayout();
     userRow->addWidget(new QLabel("用户名:"));
     m_user = new QLineEdit(); userRow->addWidget(m_user);
     lay->addLayout(userRow);
     auto *passRow = new QHBoxLayout();
-    passRow->addWidget(new QLabel("密码:"));
+    passRow->addWidget(new QLabel("密 码:"));
     m_pass = new QLineEdit(); m_pass->setEchoMode(QLineEdit::Password); passRow->addWidget(m_pass);
     lay->addLayout(passRow);
 
