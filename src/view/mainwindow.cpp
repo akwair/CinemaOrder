@@ -215,16 +215,22 @@ void MainWindow::onToggleTheme()
                 QMainWindow { background: #2b2b2b; color: #ddd; }
                 QTableView { background: #232323; color: #ddd; gridline-color: #444; selection-background-color: #3a7bd5; }
                 QHeaderView::section { background: #2f2f2f; color: #ddd; }
-                QPushButton { background: #3a3a3a; color: #fff; border: 1px solid #444; }
-                QPushButton:hover { background: #4a4a4a; }
+                QDockWidget { background: #383838; }
+                QDockWidget::title { background: #2f2f2f; color: #ddd; padding: 4px; }
+                QPushButton { background: #3a3a3a; color: #fff; border: 1px solid #4a4a4a; padding: 6px 12px; border-radius: 4px; }
+                QPushButton:hover { background: #4a4a4a; border: 1px solid #5a5a5a; }
+                QPushButton:pressed { background: #2f2f2f; border: 1px solid #3a3a3a; }
             )");
         } else {
             qApp->setStyleSheet(R"(
                 QMainWindow { background: #f7f9fc; color: #222; }
                 QTableView { background: #fff; color: #222; gridline-color: #e6eef8; selection-background-color: #87cefa; }
                 QHeaderView::section { background: #e9f2fb; color: #222; }
-                QPushButton { background: transparent; color: #222; border: 1px solid #d0d8e8; }
-                QPushButton:hover { background: #eef6ff; }
+                QDockWidget { background: #eef6ff; }
+                QDockWidget::title { background: #e0eef8; color: #222; padding: 4px; }
+                QPushButton { background: #ffffff; color: #222; border: 1px solid #d0d8e8; padding: 6px 12px; border-radius: 4px; }
+                QPushButton:hover { background: #eef6ff; border: 1px solid #a0c0e8; }
+                QPushButton:pressed { background: #dce7f4; border: 1px solid #80a0d8; }
             )");
         }
         // set back to visible

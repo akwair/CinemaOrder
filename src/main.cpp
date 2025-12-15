@@ -26,7 +26,11 @@ int main(int argc, char **argv)
         QMainWindow { background: #f7f9fc; }
         QTableView { gridline-color: #e6eef8; selection-background-color: #87cefa; }
         QHeaderView::section { background: #e9f2fb; padding: 4px; }
-        QPushButton { padding: 6px 12px; border-radius: 4px; }
+        QDockWidget { background: #eef6ff; }
+        QDockWidget::title { background: #e0eef8; padding: 4px; }
+        QPushButton { padding: 6px 12px; border-radius: 4px; background: #ffffff; color: #222; border: 1px solid #d0d8e8; }
+        QPushButton:hover { background: #eef6ff; border: 1px solid #a0c0e8; }
+        QPushButton:pressed { background: #dce7f4; }
     )";
     app.setStyleSheet(style);
     Database db("tickets.db");
