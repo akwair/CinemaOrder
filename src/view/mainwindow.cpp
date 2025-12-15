@@ -1,5 +1,6 @@
 #include "mainwindow.h"
 #include "seatselectiondialog.h"
+#include <QAction>
 #include <QToolBar>
 #include <QAction>
 #include <QTableView>
@@ -50,6 +51,10 @@ MainWindow::MainWindow(Database &db, TicketController &controller, QWidget *pare
     QFont f = view->font(); f.setPointSize(10); view->setFont(f);
     setCentralWidget(view);
 
+    // hide internal id column from UI
+    int idCol = m_model->fieldIndex("id");
+    if (idCol >= 0) view->hideColumn(idCol);
+
     // Create a left sidebar (dock) with main actions and theme toggle
     m_sideDock = new QDockWidget(tr("功能"), this);
     m_sideDock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
@@ -89,6 +94,17 @@ MainWindow::MainWindow(Database &db, TicketController &controller, QWidget *pare
     sideWidget->setLayout(sideLayout);
     m_sideDock->setWidget(sideWidget);
     addDockWidget(Qt::LeftDockWidgetArea, m_sideDock);
+
+    // ensure dock can be reopened via toolbar action
+    m_sideDock->setFeatures(QDockWidget::DockWidgetClosable | QDockWidget::DockWidgetMovable | QDockWidget::DockWidgetFloatable);
+    m_toggleDockAction = new QAction(tr("功能"), this);
+    m_toggleDockAction->setCheckable(true);
+    m_toggleDockAction->setChecked(m_sideDock->isVisible());
+    connect(m_toggleDockAction, &QAction::toggled, m_sideDock, &QWidget::setVisible);
+    connect(m_sideDock, &QDockWidget::visibilityChanged, m_toggleDockAction, &QAction::setChecked);
+    QToolBar *tb = addToolBar(tr("主工具"));
+    tb->setMovable(false);
+    tb->addAction(m_toggleDockAction);
 
     setWindowTitle("电影票管理");
     statusBar()->showMessage("就绪");
@@ -248,29 +264,190 @@ void MainWindow::onSort()
 
 void MainWindow::applyTheme(bool dark)
 {
-    if (dark) {
-        qApp->setStyleSheet(R"(
-            QMainWindow { background: #2b2b2b; color: #ddd; }
-            QTableView { background: #232323; color: #ddd; gridline-color: #444; selection-background-color: #3a7bd5; }
-            QHeaderView::section { background: #2f2f2f; color: #ddd; }
-            QDockWidget { background: #383838; }
-            QDockWidget::title { background: #2f2f2f; color: #ddd; padding: 4px; }
-            QPushButton { background: #3a3a3a; color: #fff; border: 1px solid #4a4a4a; padding: 6px 12px; border-radius: 4px; }
-            QPushButton:hover { background: #4a4a4a; border: 1px solid #5a5a5a; }
-            QPushButton:pressed { background: #2f2f2f; border: 1px solid #3a3a3a; }
-        )");
-    } else {
-        qApp->setStyleSheet(R"(
-            QMainWindow { background: #f7f9fc; color: #222; }
-            QTableView { background: #fff; color: #222; gridline-color: #e6eef8; selection-background-color: #87cefa; }
-            QHeaderView::section { background: #e9f2fb; color: #222; }
-            QDockWidget { background: #eef6ff; }
-            QDockWidget::title { background: #e0eef8; color: #222; padding: 4px; }
-            QPushButton { background: #ffffff; color: #222; border: 1px solid #d0d8e8; padding: 6px 12px; border-radius: 4px; }
-            QPushButton:hover { background: #eef6ff; border: 1px solid #a0c0e8; }
-            QPushButton:pressed { background: #dce7f4; border: 1px solid #80a0d8; }
-        )");
+    // try load external stylesheet files first (project styles folder)
+    auto loadSheet = [](const QString &filename)->QString{
+        QStringList candidates;
+        QString appDir = QCoreApplication::applicationDirPath();
+        candidates << (appDir + "/styles/" + filename);
+        candidates << (appDir + "/../styles/" + filename); // when running from build/
+        candidates << (QDir::currentPath() + "/styles/" + filename);
+        for (const QString &p : candidates) {
+            QFile f(p);
+            if (f.exists() && f.open(QFile::ReadOnly | QFile::Text)) {
+                QTextStream in(&f);
+                return in.readAll();
+            }
+        }
+        return QString();
+    };
+
+    QString sheet;
+    if (dark) sheet = loadSheet("dark.qss");
+    else sheet = loadSheet("light.qss");
+    if (!sheet.isEmpty()) {
+        qApp->setStyleSheet(sheet);
+        return;
     }
+
+    // fallback to built-in styles if external files not found
+    if (dark) {
+    qApp->setStyleSheet(R"(
+        /* 暗色主题 */
+        QMainWindow { 
+            background: #1e1e1e; 
+            color: #e0e0e0; 
+        }
+        QTableView { 
+            background: #2d2d2d; 
+            color: #e0e0e0; 
+            gridline-color: #404040; 
+            selection-background-color: #2c7be5;  /* 亮蓝色 */
+            selection-color: white;  /* 选中文字白色 */
+            alternate-background-color: #252525;
+            border: 1px solid #404040;
+            border-radius: 10px;
+        }
+        /* 选中行样式 */
+        QTableView::item:selected {
+            background: #2c7be5;  /* 明确指定选中背景 */
+            color: white;         /* 明确指定选中文字颜色 */
+            border-radius: 10px;
+        }
+        /* 交替行的选中状态 */
+        QTableView::item:alternate:selected {
+            background: #2c7be5;
+            color: white;
+            border-radius: 10px;
+        }
+        /* 焦点行的边框 */
+        QTableView::item:focus {
+            outline: none;
+            border: none;
+        }
+        QHeaderView::section { 
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                        stop:0 #333, stop:1 #2a2a2a);
+            color: #e0e0e0; 
+            padding: 8px 6px;
+            border: 1px solid #404040;
+            font-weight: 500;
+        }
+        QDockWidget { 
+            background: #2a2a2a; 
+            border: 1px solid #404040;
+        }
+        QDockWidget::title { 
+            background: #333; 
+            color: #e0e0e0; 
+            padding: 6px 8px; 
+            border-bottom: 1px solid #404040;
+        }
+        QPushButton { 
+            background: #3a3a3a; 
+            color: #fff; 
+            border: 1px solid #4a4a4a; 
+            padding: 8px 16px; 
+            border-radius: 4px;
+            min-width: 80px;
+        }
+        QPushButton:hover { 
+            background: #4a4a4a; 
+            border: 1px solid #5a5a5a; 
+        }
+        QPushButton:pressed { 
+            background: #2a2a2a; 
+            border: 1px solid #3a3a3a; 
+        }
+        QPushButton:disabled {
+            background: #2d2d2d;
+            color: #666;
+            border: 1px solid #3a3a3a;
+        }
+    )");
+} else {
+    qApp->setStyleSheet(R"(
+        /* 浅色主题 */
+        QMainWindow { 
+            background: #f7f9fc; 
+            color: #2c3e50; 
+        }
+        QTableView { 
+            background: #ffffff; 
+            color: #333333;  /* 深灰色文字，比纯黑柔和 */
+            gridline-color: #e6eef8; 
+            selection-background-color: #4a90e2;  /* 明显的蓝色 */
+            selection-color: white;  /* 选中文字白色 - 关键设置 */
+            alternate-background-color: #f9fbfd;
+            border: 1px solid #d0d8e8;
+            border-radius: 6px;
+        }
+        /* 选中行样式 */
+        QTableView::item:selected {
+            background: #4a90e2;  /* 明确指定选中背景 */
+            color: white;         /* 明确指定选中文字颜色 */
+        }
+        /* 交替行的选中状态 */
+        QTableView::item:alternate:selected {
+            background: #4a90e2;
+            color: white;
+        }
+        /* 悬停效果 */
+        QTableView::item:hover {
+            background: #f0f7ff;
+        }
+        /* 选中行的悬停效果 */
+        QTableView::item:selected:hover {
+            background: #5aa0f2;  /* 悬停时稍微亮一点 */
+            color: white;
+        }
+        /* 焦点行的边框 */
+        QTableView::item:focus {
+            outline: none;
+            border: none;
+        }
+        QHeaderView::section { 
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                        stop:0 #e9f2fb, stop:1 #d8e5f5);
+            color: #2c3e50; 
+            padding: 10px 8px;
+            border: 1px solid #d0d8e8;
+            font-weight: 600;
+        }
+        QDockWidget { 
+            background: #f0f7ff; 
+            border: 1px solid #c8d4e8;
+            border-radius: 6px;
+        }
+        QDockWidget::title { 
+            background: #e0eef8; 
+            color: #2c3e50; 
+            padding: 8px; 
+            border-bottom: 2px solid #c8d4e8;
+            border-radius: 6px 6px 0 0;
+        }
+        QPushButton { 
+            background: #ffffff; 
+            color: #2c3e50; 
+            border: 1px solid #d0d8e8; 
+            padding: 8px 16px; 
+            border-radius: 6px;
+            min-width: 80px;
+        }
+        QPushButton:hover { 
+            background: #eef6ff; 
+            border: 1px solid #4a90e2; 
+        }
+        QPushButton:pressed { 
+            background: #dce7f4; 
+            border: 1px solid #2c7be5; 
+        }
+        QPushButton:disabled {
+            background: #f5f5f5;
+            color: #a0a0a0;
+            border: 1px solid #e0e0e0;
+        }
+    )");
+}
 }
 
 void MainWindow::onToggleTheme()

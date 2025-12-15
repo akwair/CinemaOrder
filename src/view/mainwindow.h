@@ -31,5 +31,6 @@ private:
     class QPropertyAnimation *m_fadeAnim = nullptr;
     class QGraphicsOpacityEffect *m_opEffect = nullptr;
     class QSettings *m_settings = nullptr;
+    class QAction *m_toggleDockAction = nullptr;
     bool m_targetDark = false;
 };

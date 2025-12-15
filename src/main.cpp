@@ -24,12 +24,12 @@ int main(int argc, char **argv)
     QApplication::setStyle("Fusion");
     QString style = R"(
         QMainWindow { background: #f7f9fc; }
-        QTableView { gridline-color: #e6eef8; selection-background-color: #87cefa; }
+        QTableView { gridline-color: #e6eef8; selection-background-color: #cdd4d9ff; alternate-background-color: #eea317ff; }
         QHeaderView::section { background: #e9f2fb; padding: 4px; }
         QDockWidget { background: #eef6ff; }
         QDockWidget::title { background: #e0eef8; padding: 4px; }
         QPushButton { padding: 6px 12px; border-radius: 4px; background: #ffffff; color: #222; border: 1px solid #d0d8e8; outline: none; }
-        QPushButton:hover { background: #eef6ff; border: 1px solid #a0c0e8; }
+        QPushButton:hover { background: #eef6ff; border: 1px solid #bbcde2ff; }
         QPushButton:pressed { background: #dce7f4; border: 1px solid #80a0d8; }
         QPushButton:released { background: #ffffff; border: 1px solid #d0d8e8; }
         QPushButton:focus { outline: none; }
