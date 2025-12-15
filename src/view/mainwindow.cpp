@@ -81,7 +81,7 @@ MainWindow::MainWindow(Database &db, TicketController &controller, QWidget *pare
     addButton(tr("导入"), QIcon(":/icons/icons/import.svg"), SLOT(onImport()));
     addButton(tr("导出"), QIcon(":/icons/icons/export.svg"), SLOT(onExport()));
     sideLayout->addSpacing(8);
-    addButton(tr("查找"), QIcon(":/icons/icons/search.svg"), SLOT(onSearch()));
+    m_searchBtn = addButton(tr("查找"), QIcon(":/icons/icons/search.svg"), SLOT(onSearch()));
     addButton(tr("排序"), QIcon(":/icons/icons/sort.svg"), SLOT(onSort()));
 
     sideLayout->addStretch();
@@ -251,6 +251,27 @@ void MainWindow::onSearch()
     QString filter = QString("movieName LIKE '%%1%%' OR cinemaName LIKE '%%1%%'").arg(key);
     m_model->setFilter(filter);
     refresh();
+    // change search button into a restore button
+    if (m_searchBtn) {
+        // disconnect previous connection and connect to onRestore
+        QObject::disconnect(m_searchBtn, SIGNAL(clicked()), this, SLOT(onSearch()));
+        connect(m_searchBtn, &QPushButton::clicked, this, &MainWindow::onRestore);
+        m_searchBtn->setText(tr("还原"));
+        issearched = true;
+    }
+}
+
+void MainWindow::onRestore()
+{
+    // clear filter and restore original list
+    m_model->setFilter("");
+    refresh();
+    if (m_searchBtn) {
+        QObject::disconnect(m_searchBtn, SIGNAL(clicked()), this, SLOT(onRestore()));
+        connect(m_searchBtn, &QPushButton::clicked, this, &MainWindow::onSearch);
+        m_searchBtn->setText(tr("查找"));
+        issearched = false;
+    }
 }
 
 void MainWindow::onSort()

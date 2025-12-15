@@ -9,6 +9,7 @@ public:
     explicit TicketController(Database &db);
     bool addTicket(const Ticket &t);
     QList<Ticket> findTickets(const QString &movie = QString(), const QString &cinema = QString(), const QString &date = QString(), const QString &time = QString());
+    QList<Ticket> allTickets();
     QList<Ticket> listAll(const QString &orderBy = QString());
     bool deleteTicket(int id);
     bool sellTickets(int id, int qty);

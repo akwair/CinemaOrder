@@ -1,4 +1,5 @@
 #include "ticketcontroller.h"
+#include "ticket.h"
 #include <QtSql/QSqlQuery>
 #include <QtSql/QSqlError>
 #include <QTextStream>
@@ -6,6 +7,9 @@
 #include <QDebug>
 #include <QStringList>
 #include <QList>
+#include <iostream>
+#include <qlist.h>
+
 
 TicketController::TicketController(Database &db)
     : m_db(db)
@@ -68,6 +72,32 @@ QList<Ticket> TicketController::findTickets(const QString &movie, const QString 
     }
     while (q.next()) list.append(rowToTicket(q));
     return list;
+}
+
+QList<Ticket> TicketController::allTickets(){
+    QList<Ticket>list;
+    QSqlQuery q(m_db.db());
+    QString sql="SELECT * FROM tickets";
+    if(!q.exec(sql)){
+        std::cout<<"Query failed"<<std::endl;
+        return list;
+    }
+    while(q.next()){
+        Ticket t;
+        t.id = q.value("id").toInt();
+        t.movieName = q.value("movieName").toString();
+        t.cinemaName=q.value("cinemaName").toString();
+        t.showDate=q.value("showDate").toString();
+        t.showTime=q.value("showTime").toString();
+        t.duration=q.value("duration").toInt();
+        t.price=q.value("price").toDouble();
+        t.hall=q.value("hall").toString();
+        t.capacity=q.value("capacity").toInt();
+        t.sold=q.value("sold").toInt();
+        list.append(t);
+    }
+    return list;
+    
 }
 
 QList<Ticket> TicketController::listAll(const QString &orderBy)

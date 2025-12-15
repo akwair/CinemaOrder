@@ -121,3 +121,4 @@ void SeatSelectionDialog::toggleSeat()
         btn->setStyleSheet("background: #e8f0ff; color: #000;");
     }
 }
+

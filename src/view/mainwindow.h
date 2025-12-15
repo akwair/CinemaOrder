@@ -20,6 +20,7 @@ private slots:
     void onToggleTheme();
     void applyTheme(bool dark);
     void onFadeFinished();
+    void onRestore();
 private:
     TicketController &m_ctrl;
     QSqlTableModel *m_model;
@@ -33,4 +34,6 @@ private:
     class QSettings *m_settings = nullptr;
     class QAction *m_toggleDockAction = nullptr;
     bool m_targetDark = false;
+    class QPushButton *m_searchBtn = nullptr;
+    bool issearched=false;
 };
