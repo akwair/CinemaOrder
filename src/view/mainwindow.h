@@ -18,6 +18,8 @@ private slots:
     void onSearch();
     void onSort();
     void onToggleTheme();
+    void applyTheme(bool dark);
+    void onFadeFinished();
 private:
     TicketController &m_ctrl;
     QSqlTableModel *m_model;
@@ -29,4 +31,5 @@ private:
     class QPropertyAnimation *m_fadeAnim = nullptr;
     class QGraphicsOpacityEffect *m_opEffect = nullptr;
     class QSettings *m_settings = nullptr;
+    bool m_targetDark = false;
 };

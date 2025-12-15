@@ -96,26 +96,18 @@ MainWindow::MainWindow(Database &db, TicketController &controller, QWidget *pare
 
     // prepare fade animation for theme transition
     m_opEffect = new QGraphicsOpacityEffect(this);
+    m_opEffect->setOpacity(1.0);
     this->setGraphicsEffect(m_opEffect);
     m_fadeAnim = new QPropertyAnimation(m_opEffect, "opacity", this);
     m_fadeAnim->setDuration(220);
+    // connect finished once to handler
+    connect(m_fadeAnim, &QPropertyAnimation::finished, this, &MainWindow::onFadeFinished);
 
     // settings for theme persistence
     m_settings = new QSettings("CinemaOrder", "CinemaApp", this);
     m_darkTheme = m_settings->value("ui/dark", false).toBool();
-    // apply persisted theme immediately (no fade) to avoid transient mismatch
-    if (m_darkTheme) {
-        qApp->setStyleSheet(R"(
-            QMainWindow { background: #2b2b2b; color: #ddd; }
-            QTableView { background: #232323; color: #ddd; gridline-color: #444; selection-background-color: #3a7bd5; }
-            QHeaderView::section { background: #2f2f2f; color: #ddd; }
-            QDockWidget { background: #383838; }
-            QDockWidget::title { background: #2f2f2f; color: #ddd; padding: 4px; }
-            QPushButton { background: #3a3a3a; color: #fff; border: 1px solid #4a4a4a; padding: 6px 12px; border-radius: 4px; }
-            QPushButton:hover { background: #4a4a4a; border: 1px solid #5a5a5a; }
-            QPushButton:pressed { background: #2f2f2f; border: 1px solid #3a3a3a; }
-        )");
-    }
+    // apply persisted theme immediately (no fade)
+    applyTheme(m_darkTheme);
 }
 
 void MainWindow::refresh()
@@ -254,42 +246,52 @@ void MainWindow::onSort()
     refresh();
 }
 
+void MainWindow::applyTheme(bool dark)
+{
+    if (dark) {
+        qApp->setStyleSheet(R"(
+            QMainWindow { background: #2b2b2b; color: #ddd; }
+            QTableView { background: #232323; color: #ddd; gridline-color: #444; selection-background-color: #3a7bd5; }
+            QHeaderView::section { background: #2f2f2f; color: #ddd; }
+            QDockWidget { background: #383838; }
+            QDockWidget::title { background: #2f2f2f; color: #ddd; padding: 4px; }
+            QPushButton { background: #3a3a3a; color: #fff; border: 1px solid #4a4a4a; padding: 6px 12px; border-radius: 4px; }
+            QPushButton:hover { background: #4a4a4a; border: 1px solid #5a5a5a; }
+            QPushButton:pressed { background: #2f2f2f; border: 1px solid #3a3a3a; }
+        )");
+    } else {
+        qApp->setStyleSheet(R"(
+            QMainWindow { background: #f7f9fc; color: #222; }
+            QTableView { background: #fff; color: #222; gridline-color: #e6eef8; selection-background-color: #87cefa; }
+            QHeaderView::section { background: #e9f2fb; color: #222; }
+            QDockWidget { background: #eef6ff; }
+            QDockWidget::title { background: #e0eef8; color: #222; padding: 4px; }
+            QPushButton { background: #ffffff; color: #222; border: 1px solid #d0d8e8; padding: 6px 12px; border-radius: 4px; }
+            QPushButton:hover { background: #eef6ff; border: 1px solid #a0c0e8; }
+            QPushButton:pressed { background: #dce7f4; border: 1px solid #80a0d8; }
+        )");
+    }
+}
+
 void MainWindow::onToggleTheme()
 {
-    // fade out, switch stylesheet, fade in
-    bool targetDark = !m_darkTheme;
+    // initiate fade-out; theme change will be applied in onFadeFinished
+    m_targetDark = !m_darkTheme;
     m_fadeAnim->stop();
-    m_fadeAnim->setStartValue(1.0); m_fadeAnim->setEndValue(0.0);
-    connect(m_fadeAnim, &QPropertyAnimation::finished, this, [this, targetDark]() {
-        if (targetDark) {
-            qApp->setStyleSheet(R"(
-                QMainWindow { background: #2b2b2b; color: #ddd; }
-                QTableView { background: #232323; color: #ddd; gridline-color: #444; selection-background-color: #3a7bd5; }
-                QHeaderView::section { background: #2f2f2f; color: #ddd; }
-                QDockWidget { background: #383838; }
-                QDockWidget::title { background: #2f2f2f; color: #ddd; padding: 4px; }
-                QPushButton { background: #3a3a3a; color: #fff; border: 1px solid #4a4a4a; padding: 6px 12px; border-radius: 4px; }
-                QPushButton:hover { background: #4a4a4a; border: 1px solid #5a5a5a; }
-                QPushButton:pressed { background: #2f2f2f; border: 1px solid #3a3a3a; }
-            )");
-        } else {
-            qApp->setStyleSheet(R"(
-                QMainWindow { background: #f7f9fc; color: #222; }
-                QTableView { background: #fff; color: #222; gridline-color: #e6eef8; selection-background-color: #87cefa; }
-                QHeaderView::section { background: #e9f2fb; color: #222; }
-                QDockWidget { background: #eef6ff; }
-                QDockWidget::title { background: #e0eef8; color: #222; padding: 4px; }
-                QPushButton { background: #ffffff; color: #222; border: 1px solid #d0d8e8; padding: 6px 12px; border-radius: 4px; }
-                QPushButton:hover { background: #eef6ff; border: 1px solid #a0c0e8; }
-                QPushButton:pressed { background: #dce7f4; border: 1px solid #80a0d8; }
-            )");
-        }
-        // set back to visible
-        m_fadeAnim->setStartValue(0.0); m_fadeAnim->setEndValue(1.0);
-        m_fadeAnim->disconnect();
-        m_fadeAnim->start();
-    });
+    m_fadeAnim->setStartValue(1.0);
+    m_fadeAnim->setEndValue(0.0);
     m_fadeAnim->start();
-    m_darkTheme = targetDark;
-    m_settings->setValue("ui/dark", m_darkTheme);
+}
+
+void MainWindow::onFadeFinished()
+{
+    // if we've just faded out (opacity == 0), apply theme and fade back in
+    if (m_opEffect->opacity() < 0.01) {
+        applyTheme(m_targetDark);
+        m_darkTheme = m_targetDark;
+        m_settings->setValue("ui/dark", m_darkTheme);
+        m_fadeAnim->setStartValue(0.0);
+        m_fadeAnim->setEndValue(1.0);
+        m_fadeAnim->start();
+    }
 }
