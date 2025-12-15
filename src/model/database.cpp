@@ -66,5 +66,21 @@ bool Database::ensureTables()
         qWarning() << "Failed to create users table:" << q.lastError().text();
         return false;
     }
+    // seats table for per-seat tracking (created per ticket_id)
+    const QString seatsSql = R"(
+    CREATE TABLE IF NOT EXISTS seats (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        ticket_id INTEGER,
+        row INTEGER,
+        col INTEGER,
+        label TEXT,
+        status INTEGER DEFAULT 0,
+        FOREIGN KEY(ticket_id) REFERENCES tickets(id)
+    )
+    )";
+    if (!q.exec(seatsSql)) {
+        qWarning() << "Failed to create seats table:" << q.lastError().text();
+        return false;
+    }
     return true;
 }

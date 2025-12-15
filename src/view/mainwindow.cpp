@@ -1,4 +1,5 @@
 #include "mainwindow.h"
+#include "seatselectiondialog.h"
 #include <QToolBar>
 #include <QAction>
 #include <QTableView>
@@ -32,6 +33,7 @@ MainWindow::MainWindow(Database &db, TicketController &controller, QWidget *pare
     : QMainWindow(parent)
     , m_ctrl(controller)
     , m_model(new QSqlTableModel(this, db.db()))
+    , m_db(db)
 {
     m_model->setTable("tickets");
     m_model->select();
@@ -144,15 +146,43 @@ void MainWindow::onDelete()
 
 void MainWindow::onSell()
 {
-    bool ok; int qty = QInputDialog::getInt(this, "售票", "数量:", 1, 1, 10000, 1, &ok); if (!ok) return;
     auto *view = qobject_cast<QTableView*>(centralWidget()); if (!view) return;
     if (!view->selectionModel()->hasSelection()) { QMessageBox::information(this, "提示", "请选择场次"); return; }
     int row = view->selectionModel()->selectedRows().first().row();
     int id = m_model->data(m_model->index(row, m_model->fieldIndex("id"))).toInt();
-    QSqlQuery q(m_model->database());
-    q.prepare("UPDATE tickets SET sold = sold + ? WHERE id = ? AND sold + ? <= capacity");
-    q.addBindValue(qty); q.addBindValue(id); q.addBindValue(qty);
-    if (!q.exec() || q.numRowsAffected() == 0) QMessageBox::warning(this, "售票失败", "可能超出容量或发生错误");
+    int capacity = m_model->data(m_model->index(row, m_model->fieldIndex("capacity"))).toInt();
+    int sold = m_model->data(m_model->index(row, m_model->fieldIndex("sold"))).toInt();
+    if (sold >= capacity) { QMessageBox::information(this, "提示", "该场次已售罄"); return; }
+
+    // show seat selection dialog
+    SeatSelectionDialog dlg(m_db, id, capacity, this);
+    if (dlg.exec() != QDialog::Accepted) return;
+    auto seats = dlg.selectedSeats();
+    if (seats.isEmpty()) return; // nothing selected
+
+    int toSell = seats.size();
+    if (sold + toSell > capacity) { QMessageBox::warning(this, "售票失败", "选择的座位超过剩余票数"); return; }
+
+    // mark seats as sold and update tickets.sold in a transaction
+    QSqlDatabase db = m_model->database();
+    db.transaction();
+    QSqlQuery q(db);
+    q.prepare("UPDATE seats SET status = 1 WHERE id = ?");
+    for (const SeatInfo &s : seats) {
+        q.addBindValue(s.id);
+        if (!q.exec()) qWarning() << "Failed to mark seat sold:" << q.lastError().text();
+        q.finish();
+    }
+    QSqlQuery q2(db);
+    q2.prepare("UPDATE tickets SET sold = sold + ? WHERE id = ?");
+    q2.addBindValue(toSell); q2.addBindValue(id);
+    bool ok = q2.exec();
+    if (!ok) {
+        db.rollback();
+        QMessageBox::warning(this, "售票失败", "更新票务信息失败");
+    } else {
+        db.commit();
+    }
     refresh();
 }
 

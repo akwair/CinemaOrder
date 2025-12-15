@@ -21,6 +21,7 @@ private slots:
 private:
     TicketController &m_ctrl;
     QSqlTableModel *m_model;
+    Database &m_db;
     void refresh();
     // UI helpers
     class QDockWidget *m_sideDock = nullptr;

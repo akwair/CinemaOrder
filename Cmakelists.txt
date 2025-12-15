@@ -52,6 +52,7 @@ endif()
 set(MOC_HEADERS
 	${CMAKE_SOURCE_DIR}/src/view/ticketformdialog.h
 )
+list(APPEND MOC_HEADERS ${CMAKE_SOURCE_DIR}/src/view/seatselectiondialog.h)
 qt6_wrap_cpp(MOC_SOURCES ${MOC_HEADERS})
 if(MOC_SOURCES)
 	target_sources(cinema_order PRIVATE ${MOC_SOURCES})
