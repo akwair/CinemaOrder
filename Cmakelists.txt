@@ -23,7 +23,10 @@ if(NOT QT_ROOT)
 endif()
 
 if(QT_ROOT)
-	list(APPEND CMAKE_PREFIX_PATH "${QT_ROOT}/lib/cmake/Qt6" "${QT_ROOT}/lib/cmake")
+	list(APPEND CMAKE_PREFIX_PATH 
+		"${QT_ROOT}/lib/cmake/Qt6" 
+		"${QT_ROOT}/lib/cmake"
+	)
 	message(STATUS "Using QT_ROOT=${QT_ROOT}")
 endif()
 
@@ -36,26 +39,63 @@ if(NOT Qt6_FOUND)
 	find_package(Qt6 REQUIRED COMPONENTS Core Sql Widgets)
 endif()
 
-file(GLOB_RECURSE SRC_FILES src/*.cpp)
+file(GLOB_RECURSE SRC_FILES 
+	src/*.cpp
+	src/*/*.cpp
+)
 
 add_executable(cinema_order ${SRC_FILES})
-target_include_directories(cinema_order PRIVATE src)
-target_link_libraries(cinema_order Qt6::Core Qt6::Sql Qt6::Widgets)
+target_include_directories(cinema_order PRIVATE 
+	src
+	src/view
+	src/model
+	src/controller
+	src/auth
+)
 
-# Compile resources
-if(EXISTS "${CMAKE_SOURCE_DIR}/resources/resources.qrc")
-	qt6_add_resources(RESOURCES_RCC resources/resources.qrc)
+target_link_libraries(cinema_order 
+	Qt6::Core 
+	Qt6::Sql 
+	Qt6::Widgets
+)
+
+# ========== 资源处理部分 ==========
+set(RESOURCES_DIR "${CMAKE_SOURCE_DIR}/resources")
+message(STATUS "Resources directory: ${RESOURCES_DIR}")
+
+# 检查并添加资源文件
+if(EXISTS "${RESOURCES_DIR}/resources.qrc")
+	message(STATUS "Found resources.qrc")
+	
+	# 添加资源编译
+	qt6_add_resources(RESOURCES_RCC "${RESOURCES_DIR}/resources.qrc")
+	
+	# 添加资源文件到目标
 	target_sources(cinema_order PRIVATE ${RESOURCES_RCC})
+	
+	# 输出生成的资源文件名
+	foreach(RCC ${RESOURCES_RCC})
+		message(STATUS "Resource file generated: ${RCC}")
+	endforeach()
+else()
+	message(WARNING "resources.qrc not found at ${RESOURCES_DIR}/resources.qrc")
+	# 如果没有资源文件，可以创建一个空的
+	# file(WRITE "${RESOURCES_DIR}/empty.qrc" "<RCC/>")
+	# qt6_add_resources(RESOURCES_RCC "${RESOURCES_DIR}/empty.qrc")
 endif()
 
-# Ensure MOC for headers that may be missed by AUTOMOC
+# 确保 MOC 处理
 set(MOC_HEADERS
 	${CMAKE_SOURCE_DIR}/src/view/ticketformdialog.h
+	${CMAKE_SOURCE_DIR}/src/view/seatselectiondialog.h
+	${CMAKE_SOURCE_DIR}/src/view/mainwindow.h
+	${CMAKE_SOURCE_DIR}/src/view/logindialog.h
+	${CMAKE_SOURCE_DIR}/src/view/registerdialog.h
 )
-list(APPEND MOC_HEADERS ${CMAKE_SOURCE_DIR}/src/view/seatselectiondialog.h)
 qt6_wrap_cpp(MOC_SOURCES ${MOC_HEADERS})
 if(MOC_SOURCES)
 	target_sources(cinema_order PRIVATE ${MOC_SOURCES})
 endif()
 
 message(STATUS "Qt6_DIR=${Qt6_DIR}")
+message(STATUS "CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}")

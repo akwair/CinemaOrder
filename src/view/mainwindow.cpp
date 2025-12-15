@@ -68,20 +68,20 @@ MainWindow::MainWindow(Database &db, TicketController &controller, QWidget *pare
 
     // use style standard icons for portability
     QStyle *st = QApplication::style();
-    addButton(tr("新增"), QIcon("/:/icons/add.svg"), SLOT(onAdd()));
-    addButton(tr("删除"), QIcon("/:/icons/delete.svg"), SLOT(onDelete()));
-    addButton(tr("售票"), QIcon("/:/icons/sell.svg"), SLOT(onSell()));
-    addButton(tr("退票"), QIcon("/:/icons/refund.svg"), SLOT(onRefund()));
+    addButton(tr("新增"), QIcon(":/icons/icons/add.svg"), SLOT(onAdd()));
+    addButton(tr("删除"), QIcon(":/icons/icons/delete.svg"), SLOT(onDelete()));
+    addButton(tr("售票"), QIcon(":/icons/icons/sell.svg"), SLOT(onSell()));
+    addButton(tr("退票"), QIcon(":/icons/icons/refund.svg"), SLOT(onRefund()));
     sideLayout->addSpacing(8);
-    addButton(tr("导入"), QIcon("/:/icons/import.svg"), SLOT(onImport()));
-    addButton(tr("导出"), QIcon("/:/icons/export.svg"), SLOT(onExport()));
+    addButton(tr("导入"), QIcon(":/icons/icons/import.svg"), SLOT(onImport()));
+    addButton(tr("导出"), QIcon(":/icons/icons/export.svg"), SLOT(onExport()));
     sideLayout->addSpacing(8);
-    addButton(tr("查找"), QIcon("/:/icons/search.svg"), SLOT(onSearch()));
-    addButton(tr("排序"), QIcon("/:/icons/sort.svg"), SLOT(onSort()));
+    addButton(tr("查找"), QIcon(":/icons/icons/search.svg"), SLOT(onSearch()));
+    addButton(tr("排序"), QIcon(":/icons/icons/sort.svg"), SLOT(onSort()));
 
     sideLayout->addStretch();
     // theme toggle
-    QPushButton *themeBtn = new QPushButton(QIcon("/:/icons/theme.svg"), tr("切换主题"), this);
+    QPushButton *themeBtn = new QPushButton(QIcon(":/icons/icons/theme.svg"), tr("切换主题"), this);
     themeBtn->setMinimumHeight(36);
     connect(themeBtn, &QPushButton::clicked, this, &MainWindow::onToggleTheme);
     sideLayout->addWidget(themeBtn);
@@ -103,7 +103,19 @@ MainWindow::MainWindow(Database &db, TicketController &controller, QWidget *pare
     // settings for theme persistence
     m_settings = new QSettings("CinemaOrder", "CinemaApp", this);
     m_darkTheme = m_settings->value("ui/dark", false).toBool();
-    if (m_darkTheme) onToggleTheme();
+    // apply persisted theme immediately (no fade) to avoid transient mismatch
+    if (m_darkTheme) {
+        qApp->setStyleSheet(R"(
+            QMainWindow { background: #2b2b2b; color: #ddd; }
+            QTableView { background: #232323; color: #ddd; gridline-color: #444; selection-background-color: #3a7bd5; }
+            QHeaderView::section { background: #2f2f2f; color: #ddd; }
+            QDockWidget { background: #383838; }
+            QDockWidget::title { background: #2f2f2f; color: #ddd; padding: 4px; }
+            QPushButton { background: #3a3a3a; color: #fff; border: 1px solid #4a4a4a; padding: 6px 12px; border-radius: 4px; }
+            QPushButton:hover { background: #4a4a4a; border: 1px solid #5a5a5a; }
+            QPushButton:pressed { background: #2f2f2f; border: 1px solid #3a3a3a; }
+        )");
+    }
 }
 
 void MainWindow::refresh()
@@ -130,12 +142,21 @@ void MainWindow::onAdd()
     q.addBindValue(0);
     if (!q.exec()) QMessageBox::warning(this, "错误", q.lastError().text());
     refresh();
+    // clear selection so newly-added row is not left selected
+    auto *view = qobject_cast<QTableView*>(centralWidget());
+    if (view && view->selectionModel()) {
+        qDebug() << "当前选中行数:" << view->selectionModel()->selectedRows().size();
+        qDebug() << "清除前选中行:" << view->selectionModel()->selectedRows();
+        
+        view->selectionModel()->clearSelection();
+        
+        qDebug() << "清除后选中行数:" << view->selectionModel()->selectedRows().size();
+    }
 }
 
 void MainWindow::onDelete()
 {
-    auto *view = qobject_cast<QTableView*>(centralWidget());
-    if (!view) return;
+    auto *view = qobject_cast<QTableView*>(centralWidget()); if (!view) return;
     auto sel = view->selectionModel();
     if (!sel->hasSelection()) { QMessageBox::information(this, "提示", "请先选择一行"); return; }
     int row = sel->selectedRows().first().row();

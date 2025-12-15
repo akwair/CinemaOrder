@@ -28,9 +28,11 @@ int main(int argc, char **argv)
         QHeaderView::section { background: #e9f2fb; padding: 4px; }
         QDockWidget { background: #eef6ff; }
         QDockWidget::title { background: #e0eef8; padding: 4px; }
-        QPushButton { padding: 6px 12px; border-radius: 4px; background: #ffffff; color: #222; border: 1px solid #d0d8e8; }
+        QPushButton { padding: 6px 12px; border-radius: 4px; background: #ffffff; color: #222; border: 1px solid #d0d8e8; outline: none; }
         QPushButton:hover { background: #eef6ff; border: 1px solid #a0c0e8; }
-        QPushButton:pressed { background: #dce7f4; }
+        QPushButton:pressed { background: #dce7f4; border: 1px solid #80a0d8; }
+        QPushButton:released { background: #ffffff; border: 1px solid #d0d8e8; }
+        QPushButton:focus { outline: none; }
     )";
     app.setStyleSheet(style);
     Database db("tickets.db");
