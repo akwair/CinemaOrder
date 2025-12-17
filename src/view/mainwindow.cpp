@@ -293,6 +293,7 @@ void MainWindow::onSell()
     q2.addBindValue(toSell);   
     q2.addBindValue(toSell);
     q2.addBindValue(id);       
+    q2.addBindValue(toSell);  // 补缺：第 4 个参数绑定
     
     // 执行更新操作
     bool ok = q2.exec();
