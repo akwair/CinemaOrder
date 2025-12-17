@@ -9,7 +9,7 @@
 #include <QLabel>
 #include <QDebug>
 
-SeatSelectionDialog::SeatSelectionDialog(Database &db, int ticketId, int capacity, QWidget *parent)
+SeatSelectionDialog::SeatSelectionDialog(Database &db, int ticketId, int capacity, int flag,QWidget *parent)
     : QDialog(parent), m_db(db), m_ticketId(ticketId)
 {
     setWindowTitle(tr("选择座位"));
@@ -31,10 +31,15 @@ SeatSelectionDialog::SeatSelectionDialog(Database &db, int ticketId, int capacit
             auto &s = m_seats[idx];
             QPushButton *btn = new QPushButton(s.label, this);
             btn->setProperty("seat_index", idx);
-            if (s.status == 1) {
+            if (s.status == 1 && flag == 0) {
                 btn->setEnabled(false);
                 btn->setStyleSheet("background: #c05050; color: #fff;");
-            } else {
+            }
+            else if (s.status==0&&flag==1) {
+                btn->setEnabled(false);
+                btn->setStyleSheet("background: #c0c0c0; color: #fff;");
+            } 
+            else {
                 btn->setCheckable(true);
                 btn->setStyleSheet("background: #e8f0ff;");
                 connect(btn, &QPushButton::clicked, this, &SeatSelectionDialog::toggleSeat);

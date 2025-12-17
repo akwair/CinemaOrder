@@ -15,7 +15,7 @@ struct SeatInfo {
 class SeatSelectionDialog : public QDialog {
     Q_OBJECT
 public:
-    SeatSelectionDialog(Database &db, int ticketId, int capacity, QWidget *parent = nullptr);
+    SeatSelectionDialog(Database &db, int ticketId, int capacity,int flag,QWidget *parent = nullptr);//flag 0为售票，1为退票
     QVector<SeatInfo> selectedSeats() const { return m_selected; }
 private slots:
     void toggleSeat();

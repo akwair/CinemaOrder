@@ -22,4 +22,6 @@ private:
     QDoubleSpinBox *m_price;
     QLineEdit *m_hall;
     QSpinBox *m_capacity;
+    
+    int flag;//分辨是售票还是退票
 };

@@ -47,6 +47,7 @@ bool Database::ensureTables()
         price REAL,
         hall TEXT,
         capacity INTEGER,
+        remain INTEGER,
         sold INTEGER
     )
 )";

@@ -11,5 +11,6 @@ struct Ticket {
     double price = 0.0;
     QString hall;
     int capacity = 0;
+    int remain=0;
     int sold = 0;
 };
