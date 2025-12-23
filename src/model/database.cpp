@@ -72,11 +72,13 @@ bool Database::ensureTables()
     CREATE TABLE IF NOT EXISTS seats (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         ticket_id INTEGER,
+        user_fullname TEXT,
+        user_phonenumber TEXT,
+        user_email TEXT,
         row INTEGER,
         col INTEGER,
         label TEXT,
         status INTEGER DEFAULT 0,
-        FOREIGN KEY(ticket_id) REFERENCES tickets(id)
     )
     )";
     if (!q.exec(seatsSql)) {

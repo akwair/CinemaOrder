@@ -1,6 +1,7 @@
 #pragma once
 #include <QDialog>
 #include <QVector>
+#include "userinfodialog.h"
 
 class Database;
 

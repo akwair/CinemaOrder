@@ -1,5 +1,6 @@
 #include "seatselectiondialog.h"
 #include "../model/database.h"
+#include "userinfodialog.h"
 #include <QtSql/QSqlQuery>
 #include <QtSql/QSqlError>
 #include <QGridLayout>
@@ -8,6 +9,7 @@
 #include <QDialogButtonBox>
 #include <QLabel>
 #include <QDebug>
+
 
 SeatSelectionDialog::SeatSelectionDialog(Database &db, int ticketId, int capacity, int flag,QWidget *parent)
     : QDialog(parent), m_db(db), m_ticketId(ticketId)
@@ -114,6 +116,14 @@ void SeatSelectionDialog::toggleSeat()
     QPushButton *btn = qobject_cast<QPushButton*>(sender());
     if (!btn) return;
     int idx = btn->property("seat_index").toInt();
+    UserInfoDialog userInfoDlg(this);
+    if (userInfoDlg.exec() != QDialog::Accepted) {
+        btn->setChecked(false);
+        return; //用户取消
+    }
+    QString u_fullname = userInfoDlg.getFullName();
+    QString u_phonenumber = userInfoDlg.getPhoneNumber();
+    QString u_email = userInfoDlg.getEmail();
     if (idx < 0 || idx >= m_seats.size()) return;
     if (btn->isChecked()) {
         m_selected.append(m_seats[idx]);
