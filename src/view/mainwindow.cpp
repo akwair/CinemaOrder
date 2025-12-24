@@ -1,5 +1,6 @@
 #include "mainwindow.h"
 #include "seatselectiondialog.h"
+#include "moviedetaildialog.h"
 #include <QAction>
 #include <QToolBar>
 #include <QAction>
@@ -28,16 +29,20 @@
 #include <QLineEdit>
 #include <QStringList>
 #include <Qt>
+#include <QTableWidget>
 #include <qmessagebox.h>
 #include <qsqlquery.h>
 #include <QDateTime>
+#include <QComboBox>
+#include <QLabel>
 #include "../model/database.h"
 
-MainWindow::MainWindow(Database &db, TicketController &controller, QWidget *parent)
+MainWindow::MainWindow(Database &db, TicketController &controller, const QString &username, QWidget *parent)
     : QMainWindow(parent)                              
     , m_ctrl(controller)                           
     , m_model(new QSqlTableModel(this, db.db()))      
-    , m_db(db)                                       
+    , m_db(db)
+    , m_username(username)                                       
 {
     //数据模型设置
     m_model->setTable("tickets");      // 设置模型关联数据库中的"tickets"表
@@ -65,6 +70,9 @@ MainWindow::MainWindow(Database &db, TicketController &controller, QWidget *pare
     f.setPointSize(10); 
     view->setFont(f); // 设置表格字体大小为10
     setCentralWidget(view);                            // 将表格视图设置为主窗口的中心部件
+
+    // 连接双击信号到查看详情功能
+    connect(view, &QTableView::doubleClicked, this, &MainWindow::onViewOrEditMovieDetail);
 
     // UI列隐藏
     // 隐藏内部ID列（不显示给用户看，但数据模型中仍存在）
@@ -106,6 +114,8 @@ MainWindow::MainWindow(Database &db, TicketController &controller, QWidget *pare
     // 查询与排序按钮组
     m_searchBtn = addButton(tr("查找"), QIcon(":/icons/icons/search.svg"), SLOT(onSearch())); // 查找功能
     addButton(tr("排序"), QIcon(":/icons/icons/sort.svg"), SLOT(onSort()));     // 排序功能
+    addButton(tr("编辑详情"), QIcon(":/icons/icons/edit.svg"), SLOT(onEditMovieDetail())); // 编辑电影详情
+    addButton(tr("所有票务"), QIcon(":/icons/icons/ticket.svg"), SLOT(onViewAllTickets())); // 查看所有票务
 
     sideLayout->addStretch();                          // 添加弹性空间，使后续按钮靠底部
 
@@ -139,7 +149,7 @@ MainWindow::MainWindow(Database &db, TicketController &controller, QWidget *pare
 
     // 主窗口基本设置
     setWindowTitle("电影票管理");                      // 设置窗口标题
-    statusBar()->showMessage("就绪");                  // 在状态栏显示就绪消息
+    statusBar()->showMessage("双击电影行查看/编辑详情 | 就绪");                  // 在状态栏显示就绪消息
     setMinimumSize(1100, 600);                         // 设置窗口大小
 
     // 主题切换动画效果
@@ -246,7 +256,7 @@ void MainWindow::onSell()
 
     // 显示座位选择对话框，让用户选择具体的座位
     // 参数：数据库连接、场次ID、总座位数
-    SeatSelectionDialog dlg(m_db, id, capacity,0,this);
+    SeatSelectionDialog dlg(m_db, id, capacity,0, m_username, this);
     
     // 如果用户取消选择（点击取消按钮），则直接返回
     if (dlg.exec() != QDialog::Accepted) return;
@@ -273,16 +283,20 @@ void MainWindow::onSell()
     // 开启事务：接下来的所有数据库操作要么全部成功，要么全部失败
     db.transaction();
     
-    // 创建第一个SQL查询将选中的座位状态更新为status=0
+    // 创建第一个SQL查询将选中的座位状态更新为status=1，并保存用户信息
     QSqlQuery q(db);
-    q.prepare("UPDATE seats SET status = 1 WHERE id = ?");  // ? 是参数占位符
+    q.prepare("UPDATE seats SET status = 1, username = ?, user_fullname = ?, user_phonenumber = ?, user_email = ? WHERE id = ?");
     
     // 遍历用户选择的每一个座位
     for (const SeatInfo &s : seats) {
-        q.addBindValue(s.id);// 绑定座位ID参数
+        q.addBindValue(m_username); // 使用实际的管理员用户名
+        q.addBindValue(s.userFullName);
+        q.addBindValue(s.userPhoneNumber);
+        q.addBindValue(s.userEmail);
+        q.addBindValue(s.id);
         if (!q.exec())
-            qWarning() << "更新座位状态失败:" << q.lastError().text();  // 记录错误日志
-        q.finish();// 结束当前查询，准备执行下一个
+            qWarning() << "更新座位状态失败:" << q.lastError().text();
+        q.finish();
     }
 
     // 创建第二个SQL查询：更新票务表中的已售座位数
@@ -346,7 +360,7 @@ void MainWindow::onRefund()
         return;
     }
 
-    SeatSelectionDialog dlg(m_db, id, capacity,1,this);
+    SeatSelectionDialog dlg(m_db, id, capacity,1, m_username, this);
     if (dlg.exec() != QDialog::Accepted) return;
     
     QSqlDatabase db = m_model->database();
@@ -415,11 +429,29 @@ void MainWindow::onExport()
 
 void MainWindow::onSearch()
 {
-    QString key = QInputDialog::getText(this, "查找", "电影或影院关键字:");
+    // 创建查找类型选择对话框
+    QStringList searchTypes;
+    searchTypes << "电影或影院" << "用户";
+    bool ok;
+    QString selectedType = QInputDialog::getItem(this, "选择查找类型", "查找类型:", searchTypes, 0, false, &ok);
+    
+    if (!ok || selectedType.isEmpty()) return;
+    
+    QString key = QInputDialog::getText(this, "查找", selectedType + "关键字:");
     if (key.isEmpty()) return;
-    QString filter = QString("movieName LIKE '%%1%%' OR cinemaName LIKE '%%1%%'").arg(key);
+    
+    QString filter;
+    if (selectedType == "电影或影院") {
+        filter = QString("movieName LIKE '%%1%%' OR cinemaName LIKE '%%1%%'").arg(key);
+    } else if (selectedType == "用户") {
+        // 查找与用户相关的票务（通过连接seats表）
+        // 这里需要使用子查询或JOIN来查找包含特定用户的票务
+        filter = QString("id IN (SELECT DISTINCT ticket_id FROM seats WHERE username LIKE '%%1%%')").arg(key);
+    }
+    
     m_model->setFilter(filter);
     refresh();
+    
     // change search button into a restore button
     if (m_searchBtn) {
         // disconnect previous connection and connect to onRestore
@@ -659,5 +691,261 @@ void MainWindow::onFadeFinished()
         m_fadeAnim->setStartValue(0.0);
         m_fadeAnim->setEndValue(1.0);
         m_fadeAnim->start();
+    }
+}
+
+void MainWindow::onViewAllTickets()
+{
+    QDialog dlg(this);
+    dlg.setWindowTitle("所有票务");
+    dlg.resize(1000, 700);
+
+    QVBoxLayout *layout = new QVBoxLayout(&dlg);
+
+    // 添加搜索和筛选控件
+    QHBoxLayout *searchLayout = new QHBoxLayout();
+    
+    QLabel *searchLabel = new QLabel("搜索:");
+    QLineEdit *searchEdit = new QLineEdit(&dlg);
+    searchEdit->setPlaceholderText("输入用户名、电影名、影院名或购买者姓名...");
+    
+    QLabel *filterLabel = new QLabel("筛选:");
+    QComboBox *filterCombo = new QComboBox(&dlg);
+    filterCombo->addItem("全部", "");
+    filterCombo->addItem("普通用户", "user");
+    filterCombo->addItem("管理员", "admin");
+    
+    QPushButton *searchBtn = new QPushButton("搜索", &dlg);
+    QPushButton *clearBtn = new QPushButton("清除", &dlg);
+    
+    searchLayout->addWidget(searchLabel);
+    searchLayout->addWidget(searchEdit);
+    searchLayout->addWidget(filterLabel);
+    searchLayout->addWidget(filterCombo);
+    searchLayout->addWidget(searchBtn);
+    searchLayout->addWidget(clearBtn);
+    searchLayout->addStretch();
+    
+    layout->addLayout(searchLayout);
+
+    QTableWidget *table = new QTableWidget(&dlg);
+    table->setColumnCount(8);
+    table->setHorizontalHeaderLabels({"用户名", "电影名称", "影院名称", "座位", "购买者姓名", "电话", "邮箱", "状态"});
+
+    // 存储所有票务数据的成员变量，用于筛选
+    QList<QVariantList> allTicketsData;
+    
+    auto loadTicketsData = [&](const QString &searchText = "", const QString &userType = "") {
+        table->setRowCount(0);
+        allTicketsData.clear();
+        
+        QSqlQuery q(m_db.db());
+        QString queryStr = "SELECT s.username, t.movieName, t.cinemaName, s.label, s.user_fullname, s.user_phonenumber, s.user_email, s.status "
+                          "FROM seats s JOIN tickets t ON s.ticket_id = t.id "
+                          "WHERE s.status = 1";
+        
+        QStringList conditions;
+        if (!searchText.isEmpty()) {
+            conditions << "(s.username LIKE :search OR t.movieName LIKE :search OR t.cinemaName LIKE :search OR s.user_fullname LIKE :search)";
+        }
+        if (!userType.isEmpty()) {
+            if (userType == "admin") {
+                conditions << "s.username = 'admin'";
+            } else if (userType == "user") {
+                conditions << "s.username != 'admin'";
+            }
+        }
+        
+        if (!conditions.isEmpty()) {
+            queryStr += " AND " + conditions.join(" AND ");
+        }
+        
+        queryStr += " ORDER BY s.username, t.showDate, t.showTime";
+        
+        q.prepare(queryStr);
+        if (!searchText.isEmpty()) {
+            q.bindValue(":search", "%" + searchText + "%");
+        }
+        
+        if (q.exec()) {
+            int row = 0;
+            while (q.next()) {
+                table->insertRow(row);
+                QVariantList rowData;
+                for (int col = 0; col < 8; ++col) {
+                    QString value = col == 7 ? "已购买" : q.value(col).toString();
+                    table->setItem(row, col, new QTableWidgetItem(value));
+                    rowData << value;
+                }
+                allTicketsData << rowData;
+                row++;
+            }
+        }
+        table->resizeColumnsToContents();
+    };
+
+    // 初始加载所有数据
+    loadTicketsData();
+
+    // 连接搜索按钮
+    connect(searchBtn, &QPushButton::clicked, [&]() {
+        loadTicketsData(searchEdit->text(), filterCombo->currentData().toString());
+    });
+    
+    // 连接清除按钮
+    connect(clearBtn, &QPushButton::clicked, [&]() {
+        searchEdit->clear();
+        filterCombo->setCurrentIndex(0);
+        loadTicketsData();
+    });
+    
+    // 连接回车键搜索
+    connect(searchEdit, &QLineEdit::returnPressed, [&]() {
+        loadTicketsData(searchEdit->text(), filterCombo->currentData().toString());
+    });
+
+    layout->addWidget(table);
+
+    QPushButton *closeBtn = new QPushButton("关闭", &dlg);
+    connect(closeBtn, &QPushButton::clicked, &dlg, &QDialog::accept);
+    layout->addWidget(closeBtn);
+
+    dlg.exec();
+}
+
+void MainWindow::onEditMovieDetail()
+{
+    // 检查管理员是否选择了电影
+    auto *view = qobject_cast<QTableView*>(centralWidget());
+    if (!view) return;
+    
+    auto selection = view->selectionModel()->selectedRows();
+    if (selection.isEmpty()) {
+        QMessageBox::information(this, "提示", "请先选择一个电影场次");
+        return;
+    }
+    
+    int row = selection.first().row();
+    int ticketId = m_model->data(m_model->index(row, 0)).toInt(); // 获取ID列的值
+    
+    // 从数据库查询当前电影详情
+    QSqlQuery q(m_db.db());
+    q.prepare("SELECT movieName, description, director, actors, genre, rating, poster FROM tickets WHERE id = ?");
+    q.addBindValue(ticketId);
+    
+    if (q.exec() && q.next()) {
+        QString movieName = q.value(0).toString();
+        QString description = q.value(1).toString();
+        QString director = q.value(2).toString();
+        QString actors = q.value(3).toString();
+        QString genre = q.value(4).toString();
+        double rating = q.value(5).toDouble();
+        QString poster = q.value(6).toString();
+        
+        // 显示电影详情编辑对话框
+        MovieDetailDialog dlg(this);
+        dlg.setMovieInfo(movieName, description, director, actors, genre, rating, poster);
+        dlg.setEditMode(true); // 管理员可以编辑
+        
+        if (dlg.exec() == QDialog::Accepted) {
+            // 保存修改到数据库
+            QSqlQuery updateQuery(m_db.db());
+            updateQuery.prepare("UPDATE tickets SET description = ?, director = ?, actors = ?, genre = ?, rating = ?, poster = ? WHERE id = ?");
+            updateQuery.addBindValue(dlg.getDescription());
+            updateQuery.addBindValue(dlg.getDirector());
+            updateQuery.addBindValue(dlg.getActors());
+            updateQuery.addBindValue(dlg.getGenre());
+            updateQuery.addBindValue(dlg.getRating());
+            updateQuery.addBindValue(dlg.getPoster());
+            updateQuery.addBindValue(ticketId);
+            
+            if (updateQuery.exec()) {
+                QMessageBox::information(this, "成功", "电影详情已更新");
+                refresh(); // 刷新表格显示
+            } else {
+                QMessageBox::warning(this, "错误", "更新电影详情失败: " + updateQuery.lastError().text());
+            }
+        }
+    } else {
+        QMessageBox::warning(this, "错误", "无法获取电影详情信息");
+    }
+}
+
+void MainWindow::onViewOrEditMovieDetail()
+{
+    // 检查管理员是否选择了电影
+    auto *view = qobject_cast<QTableView*>(centralWidget());
+    if (!view) return;
+    
+    auto selection = view->selectionModel()->selectedRows();
+    if (selection.isEmpty()) {
+        QMessageBox::information(this, "提示", "请先选择一个电影场次");
+        return;
+    }
+    
+    int row = selection.first().row();
+    int ticketId = m_model->data(m_model->index(row, 0)).toInt(); // 获取ID列的值
+    
+    // 从数据库查询当前电影详情
+    QSqlQuery q(m_db.db());
+    q.prepare("SELECT movieName, description, director, actors, genre, rating, poster FROM tickets WHERE id = ?");
+    q.addBindValue(ticketId);
+    
+    if (q.exec() && q.next()) {
+        QString movieName = q.value(0).toString();
+        QString description = q.value(1).toString();
+        QString director = q.value(2).toString();
+        QString actors = q.value(3).toString();
+        QString genre = q.value(4).toString();
+        double rating = q.value(5).toDouble();
+        QString poster = q.value(6).toString();
+        
+        // 显示操作选择对话框
+        QMessageBox msgBox(this);
+        msgBox.setWindowTitle("选择操作");
+        msgBox.setText("您想要做什么？");
+        msgBox.setIcon(QMessageBox::Question);
+        
+        QPushButton *viewBtn = msgBox.addButton("查看详情", QMessageBox::ActionRole);
+        QPushButton *editBtn = msgBox.addButton("编辑详情", QMessageBox::ActionRole);
+        QPushButton *cancelBtn = msgBox.addButton("取消", QMessageBox::RejectRole);
+        
+        msgBox.exec();
+        
+        if (msgBox.clickedButton() == viewBtn) {
+            // 查看详情模式
+            MovieDetailDialog dlg(this);
+            dlg.setMovieInfo(movieName, description, director, actors, genre, rating, poster);
+            dlg.setEditMode(false); // 只读模式
+            dlg.exec();
+        } else if (msgBox.clickedButton() == editBtn) {
+            // 编辑详情模式
+            MovieDetailDialog dlg(this);
+            dlg.setMovieInfo(movieName, description, director, actors, genre, rating, poster);
+            dlg.setEditMode(true); // 编辑模式
+            
+            if (dlg.exec() == QDialog::Accepted) {
+                // 保存修改到数据库
+                QSqlQuery updateQuery(m_db.db());
+                updateQuery.prepare("UPDATE tickets SET description = ?, director = ?, actors = ?, genre = ?, rating = ?, poster = ? WHERE id = ?");
+                updateQuery.addBindValue(dlg.getDescription());
+                updateQuery.addBindValue(dlg.getDirector());
+                updateQuery.addBindValue(dlg.getActors());
+                updateQuery.addBindValue(dlg.getGenre());
+                updateQuery.addBindValue(dlg.getRating());
+                updateQuery.addBindValue(dlg.getPoster());
+                updateQuery.addBindValue(ticketId);
+                
+                if (updateQuery.exec()) {
+                    QMessageBox::information(this, "成功", "电影详情已更新");
+                    refresh(); // 刷新表格显示
+                } else {
+                    QMessageBox::warning(this, "错误", "更新电影详情失败: " + updateQuery.lastError().text());
+                }
+            }
+        }
+        // 如果点击取消或关闭对话框，不做任何操作
+    } else {
+        QMessageBox::warning(this, "错误", "无法获取电影详情信息");
     }
 }

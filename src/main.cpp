@@ -7,6 +7,7 @@
 #include "model/database.h"
 #include "controller/ticketcontroller.h"
 #include "view/mainwindow.h"
+#include "view/usermainwindow.h"
 #include "auth/authmanager.h"
 #include "view/logindialog.h"
 
@@ -49,7 +50,15 @@ int main(int argc, char **argv)
     if (loginDlg.exec() != QDialog::Accepted) {
         return 0; // user cancelled or failed to login
     }
-    MainWindow w(db, ctrl);
-    w.show();
-    return app.exec();
+
+    int userRole = loginDlg.getRole();
+    if (auth.isAdmin(userRole)) {
+        MainWindow w(db, ctrl, loginDlg.getUsername());
+        w.show();
+        return app.exec();
+    } else {
+        UserMainWindow w(db, ctrl, loginDlg.getUsername());
+        w.show();
+        return app.exec();
+    }
 }

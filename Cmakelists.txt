@@ -89,6 +89,7 @@ set(MOC_HEADERS
 	${CMAKE_SOURCE_DIR}/src/view/ticketformdialog.h
 	${CMAKE_SOURCE_DIR}/src/view/seatselectiondialog.h
 	${CMAKE_SOURCE_DIR}/src/view/mainwindow.h
+	${CMAKE_SOURCE_DIR}/src/view/usermainwindow.h
 	${CMAKE_SOURCE_DIR}/src/view/logindialog.h
 	${CMAKE_SOURCE_DIR}/src/view/registerdialog.h
 )

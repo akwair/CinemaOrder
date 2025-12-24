@@ -4,26 +4,21 @@ class QSqlTableModel;
 class TicketController;
 class Database;
 
-class MainWindow : public QMainWindow {
+class UserMainWindow : public QMainWindow {
     Q_OBJECT
 public:
-    explicit MainWindow(Database &db, TicketController &controller, const QString &username = "admin", QWidget *parent = nullptr);
+    explicit UserMainWindow(Database &db, TicketController &controller, const QString &username, QWidget *parent = nullptr);
 private slots:
-    void onAdd();
-    void onDelete();
-    void onSell();
+    void onBuyTicket();
     void onRefund();
-    void onImport();
-    void onExport();
     void onSearch();
     void onSort();
-    void onEditMovieDetail();
-    void onViewOrEditMovieDetail();
     void onToggleTheme();
     void applyTheme(bool dark);
     void onFadeFinished();
     void onRestore();
-    void onViewAllTickets();
+    void onViewMyTickets();
+    void onViewMovieDetail();
 private:
     TicketController &m_ctrl;
     QSqlTableModel *m_model;
@@ -31,13 +26,11 @@ private:
     QString m_username;
     void refresh();
     // UI helpers
-    class QDockWidget *m_sideDock = nullptr;
     bool m_darkTheme = false;
     class QPropertyAnimation *m_fadeAnim = nullptr;
     class QGraphicsOpacityEffect *m_opEffect = nullptr;
     class QSettings *m_settings = nullptr;
-    class QAction *m_toggleDockAction = nullptr;
-    bool m_targetDark = false;
     class QPushButton *m_searchBtn = nullptr;
-    bool issearched=false;
+    bool issearched = false;
+    bool m_targetDark = false;
 };

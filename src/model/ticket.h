@@ -13,4 +13,7 @@ struct Ticket {
     int capacity = 0;
     int remain=0;
     int sold = 0;
+    
+    // 电影详情（合并后的单一字段）
+    QString movieDetails;
 };

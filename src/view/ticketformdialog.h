@@ -2,6 +2,7 @@
 #include <QDialog>
 #include <QSpinBox>
 #include <QDoubleSpinBox>
+#include <QTextEdit>
 #include "../model/ticket.h"
 
 class TicketFormDialog : public QDialog {
@@ -22,6 +23,14 @@ private:
     QDoubleSpinBox *m_price;
     QLineEdit *m_hall;
     QSpinBox *m_capacity;
+    
+    // 电影详情字段
+    QTextEdit *m_description;
+    QLineEdit *m_director;
+    QLineEdit *m_actors;
+    QLineEdit *m_genre;
+    QDoubleSpinBox *m_rating;
+    QLineEdit *m_poster;
     
     int flag;//分辨是售票还是退票
 };

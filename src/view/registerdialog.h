@@ -13,4 +13,6 @@ private:
     AuthManager &m_auth;
     class QLineEdit *m_user;
     class QLineEdit *m_pass;
+    class QCheckBox *m_adminCheck;
+    class QLineEdit *m_adminCode;
 };

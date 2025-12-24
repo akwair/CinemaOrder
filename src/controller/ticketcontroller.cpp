@@ -19,7 +19,7 @@ TicketController::TicketController(Database &db)
 bool TicketController::addTicket(const Ticket &t)
 {
     QSqlQuery q(m_db.db());
-    q.prepare("INSERT INTO tickets (movieName,cinemaName,showDate,showTime,duration,price,hall,capacity,sold) VALUES (?,?,?,?,?,?,?,?,?)");
+    q.prepare("INSERT INTO tickets (movieName,cinemaName,showDate,showTime,duration,price,hall,capacity,sold,movie_details) VALUES (?,?,?,?,?,?,?,?,?,?)");
     q.addBindValue(t.movieName);
     q.addBindValue(t.cinemaName);
     q.addBindValue(t.showDate);
@@ -29,6 +29,7 @@ bool TicketController::addTicket(const Ticket &t)
     q.addBindValue(t.hall);
     q.addBindValue(t.capacity);
     q.addBindValue(t.sold);
+    q.addBindValue(t.movieDetails);
     if (!q.exec()) {
         qWarning() << "Insert failed:" << q.lastError().text();
         return false;
@@ -49,6 +50,15 @@ static Ticket rowToTicket(const QSqlQuery &q)
     t.hall = q.value("hall").toString();
     t.capacity = q.value("capacity").toInt();
     t.sold = q.value("sold").toInt();
+    
+    // 电影详情字段
+    t.description = q.value("description").toString();
+    t.director = q.value("director").toString();
+    t.actors = q.value("actors").toString();
+    t.genre = q.value("genre").toString();
+    t.rating = q.value("rating").toDouble();
+    t.poster = q.value("poster").toString();
+    
     return t;
 }
 

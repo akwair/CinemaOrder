@@ -6,6 +6,7 @@
 #include <QLabel>
 #include <QPushButton>
 #include <QMessageBox>
+#include <QCheckBox>
 
 RegisterDialog::RegisterDialog(AuthManager &auth, QWidget *parent)
     : QDialog(parent), m_auth(auth)
@@ -21,6 +22,15 @@ RegisterDialog::RegisterDialog(AuthManager &auth, QWidget *parent)
     m_pass = new QLineEdit(); m_pass->setEchoMode(QLineEdit::Password); passRow->addWidget(m_pass);
     lay->addLayout(passRow);
 
+    m_adminCheck = new QCheckBox("注册为管理员");
+    lay->addWidget(m_adminCheck);
+
+    auto *codeRow = new QHBoxLayout();
+    codeRow->addWidget(new QLabel("管理员校验码:"));
+    m_adminCode = new QLineEdit(); m_adminCode->setEchoMode(QLineEdit::Password);
+    codeRow->addWidget(m_adminCode);
+    lay->addLayout(codeRow);
+
     auto *btn = new QPushButton("注册");
     lay->addWidget(btn);
     connect(btn, &QPushButton::clicked, this, &RegisterDialog::onRegisterClicked);
@@ -31,6 +41,20 @@ void RegisterDialog::onRegisterClicked()
     QString u = m_user->text().trimmed();
     QString p = m_pass->text();
     if (u.isEmpty() || p.isEmpty()) { QMessageBox::warning(this, "错误", "请输入用户名和密码"); return; }
-    if (m_auth.registerUser(u, p)) { QMessageBox::information(this, "成功", "注册成功，请登录"); accept(); }
+    
+    int role = 0;
+    if (m_adminCheck->isChecked()) {
+        QString code = m_adminCode->text().trimmed();
+        if (code != "701001") {//校验码修改处
+            QMessageBox::warning(this, "错误", "管理员校验码错误");
+            return;
+        }
+        role = 1;
+    }
+    
+    if (m_auth.registerUser(u, p, role)) { 
+        QMessageBox::information(this, "成功", "注册成功，请登录"); 
+        accept(); 
+    }
     else QMessageBox::warning(this, "失败", "注册失败（可能用户名已存在）");
 }

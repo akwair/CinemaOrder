@@ -39,7 +39,11 @@ void LoginDialog::onLogin()
     QString u = m_user->text().trimmed();
     QString p = m_pass->text();
     if (u.isEmpty() || p.isEmpty()) { QMessageBox::warning(this, "错误", "请输入用户名和密码"); return; }
-    if (m_auth.login(u, p)) { m_ok = true; accept(); }
+    if (m_auth.login(u, p, m_role)) { 
+        m_ok = true; 
+        m_username = u;
+        accept(); 
+    }
     else QMessageBox::warning(this, "登录失败", "用户名或密码错误");
 }
 
