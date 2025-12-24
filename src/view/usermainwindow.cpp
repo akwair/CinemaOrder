@@ -32,6 +32,7 @@
 #include <QTextStream>
 #include <QTableWidget>
 #include "../model/database.h"
+#include <QMap>
 
 // 构造函数：创建普通用户主窗口
 UserMainWindow::UserMainWindow(Database &db, TicketController &controller, const QString &username, QWidget *parent)
@@ -75,6 +76,22 @@ UserMainWindow::UserMainWindow(Database &db, TicketController &controller, const
     // 隐藏remain列（已有capacity和sold，remain可计算得出）
     int remainCol = m_model->fieldIndex("remain");
     if (remainCol >= 0) view->hideColumn(remainCol);
+
+    // 设置中文列头
+    auto setHeader = [&](const char *field, const char *zh){
+        int col = m_model->fieldIndex(field);
+        if (col >= 0) m_model->setHeaderData(col, Qt::Horizontal, tr(zh));
+    };
+    setHeader("movieName", "电影名");
+    setHeader("cinemaName", "影院名");
+    setHeader("showDate", "放映日期");
+    setHeader("showTime", "放映时间");
+    setHeader("duration", "时长");
+    setHeader("price", "价格");
+    setHeader("hall", "影厅");
+    setHeader("capacity", "容量");
+    setHeader("sold", "已售");
+    setHeader("remain", "剩余");
 
     // 左侧功能边栏创建
     auto *m_sideDock = new QDockWidget(tr("功能"), this);
@@ -384,10 +401,25 @@ void UserMainWindow::onViewMyTickets()
 // 排序功能：按字段排序票务列表
 void UserMainWindow::onSort()
 {
-    QStringList items; items << "showDate" << "showTime" << "price";
-    bool ok; QString choice = QInputDialog::getItem(this, "排序", "依据:", items, 0, false, &ok);
+    // 中文选项与字段名映射
+    QMap<QString, QString> fieldMap;
+    fieldMap[tr("电影名")] = "movieName";
+    fieldMap[tr("影院名")] = "cinemaName";
+    fieldMap[tr("放映日期")] = "showDate";
+    fieldMap[tr("放映时间")] = "showTime";
+    fieldMap[tr("价格")] = "price";
+    fieldMap[tr("时长")] = "duration";
+    fieldMap[tr("影厅")] = "hall";
+    fieldMap[tr("容量")] = "capacity";
+    fieldMap[tr("已售")] = "sold";
+    fieldMap[tr("剩余")] = "remain";
+
+    QStringList items = fieldMap.keys();
+    bool ok; QString choice = QInputDialog::getItem(this, tr("排序"), tr("依据:"), items, 0, false, &ok);
     if (!ok || choice.isEmpty()) return;
-    m_model->setSort(m_model->fieldIndex(choice), Qt::AscendingOrder);
+    QString field = fieldMap.value(choice);
+    if (field.isEmpty()) return;
+    m_model->setSort(m_model->fieldIndex(field), Qt::AscendingOrder);
     refresh();
 }
 
