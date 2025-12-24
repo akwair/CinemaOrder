@@ -1,31 +1,60 @@
-# CinemaOrder — 电影票管理（Qt6 + CMake）
+# CinemaOrder — 电影票管理系统
 
-简要说明
+> 基于 Qt6 + CMake 的现代化电影票务管理系统
 
-- 这是一个基于 Qt6 的电影票管理示例程序，采用轻量 MVC 架构：
-- 模型：src/model（`Ticket`、`Database`）
-- 控制器：src/controller（`TicketController`）
-- 视图：src/view（控制台 `ConsoleView`、GUI `MainWindow`、对话框等）
-- 使用 `Qt6::Core` 与 `Qt6::Sql`（SQLite）保存数据，UI 使用 `Qt6::Widgets`（基于 `QSqlTableModel`）
-- 图标资源放在 `resources/resources.qrc`（SVG），程序支持深/浅色主题切换并持久化设置
+## 📋 项目概述
 
-环境与依赖
+这是一个采用 MVC 架构设计的电影票管理系统，支持：
+- ✅ 用户登录/注册（管理员/普通用户）
+- ✅ 电影场次管理（增删改查）
+- ✅ 电影详情编辑（导演、主演、类型、评分等）
+- ✅ 座位选择与购票
+- ✅ 退票功能
+- ✅ 票务查询与统计
+- ✅ 数据导入/导出
+- ✅ 深色/浅色主题切换
 
-- 推荐：Windows + MSYS2 (Mingw-w64) 或任意支持 Qt6 的平台
-- 需安装：Qt6（包含 `Qt6::Core`, `Qt6::Sql`, `Qt6::Widgets`）、CMake、编译器（MinGW 或 MSVC）
-- MSYS2 (MINGW64) 示例：
-- `pacman -S mingw-w64-x86_64-qt6 mingw-w64-x86_64-toolchain`
+## 🏗️ 项目结构
 
-项目关键文件
+```
+CinemaOrder/
+├── src/                    # 源代码目录
+│   ├── main.cpp           # 程序入口
+│   ├── auth/              # 认证模块
+│   │   ├── authmanager.h
+│   │   └── authmanager.cpp
+│   ├── model/             # 数据模型层
+│   │   ├── database.h     # 数据库封装
+│   │   ├── database.cpp
+│   │   └── ticket.h       # 票务数据结构
+│   ├── controller/        # 控制器层
+│   │   ├── ticketcontroller.h
+│   │   └── ticketcontroller.cpp
+│   └── view/              # 视图层（UI）
+│       ├── mainwindow.*          # 管理员主界面
+│       ├── usermainwindow.*      # 用户主界面
+│       ├── logindialog.*         # 登录对话框
+│       ├── registerdialog.*      # 注册对话框
+│       ├── moviedetaildialog.*   # 电影详情对话框
+│       ├── seatselectiondialog.* # 座位选择对话框
+│       ├── ticketformdialog.*    # 票务表单对话框
+│       └── userinfodialog.*      # 用户信息对话框
+├── resources/             # 资源文件
+│   ├── resources.qrc      # Qt资源配置
+│   └── icons/             # SVG图标
+├── build/                 # 构建输出目录（自动生成）
+├── CMakeLists.txt         # CMake配置文件
+├── README.md              # 项目说明文档
+└── LICENSE                # 许可证文件
+```
 
-- `CMakeLists.txt`：工程配置、查找 Qt、AUTOMOC/AUTORCC/AUTOUIC、资源打包
-- `src/main.cpp`：程序入口（登录对话后打开主窗口，可切回控制台模式）
-- `src/model/database.{h,cpp}`：`QSqlDatabase` 封装与建表（`tickets`、`users`）
-- `src/model/ticket.h`：`Ticket` 数据结构
-- `src/controller/ticketcontroller.{h,cpp}`：票务增删改查、售票/退票、导入/导出
-- `src/auth/authmanager.{h,cpp}`：简单认证（用户名 + SHA256(password)）
-- `src/view/*`：GUI（`MainWindow`、`TicketFormDialog`、`LoginDialog`、`RegisterDialog`）与控制台视图
-- `resources/resources.qrc` 与 `resources/icons/*.svg`：SVG 图标资源
+## 🛠️ 技术栈
+
+- **框架**: Qt6 (Core, Sql, Widgets)
+- **数据库**: SQLite
+- **构建工具**: CMake 3.16+
+- **编译器**: MinGW-w64 / MSVC / GCC
+- **架构模式**: MVC (Model-View-Controller)
 
 快速构建（MSYS2 MINGW64）
 
@@ -54,27 +83,145 @@ cd build
 .\cinema_order.exe
 ```
 
-常见问题与排查
+## ❓ 常见问题
 
-- 链接失败（`permission denied`）：可执行文件被占用，先停止该进程再重建：
-- PowerShell: `Get-Process cinema_order -ErrorAction SilentlyContinue | Stop-Process -Force`
-- MOC/自动生成问题：已启用 `CMAKE_AUTOMOC`。若添加带 `Q_OBJECT` 的类但未被自动处理，可在 `CMakeLists.txt` 中使用 `qt6_wrap_cpp` 手动列出头文件。
-- 终端中文乱码：Windows 上在 `main.cpp` 处设置控制台为 UTF-8（`SetConsoleOutputCP(CP_UTF8)`）；在 MSYS2 下使用 `export LANG=zh_CN.UTF-8`。
+### 编译问题
 
-开发与修改指南
+**Q: 链接失败 (permission denied)**
+```bash
+# Windows PowerShell
+Get-Process cinema_order -ErrorAction SilentlyContinue | Stop-Process -Force
 
-- 改 UI 布局/样式：编辑 `src/view/mainwindow.cpp` 与 `src/main.cpp` 中的样式字符串；主题持久化键为 `ui/dark`（`QSettings("CinemaOrder","CinemaApp")`）。
-- 新增对话：头文件需带 `Q_OBJECT`，并确保被 CMake 的 AUTOMOC 或 `qt6_wrap_cpp` 覆盖。
-- 资源：将 SVG 放到 `resources/icons/` 并更新 `resources/resources.qrc`，CMake 会调用 `qt6_add_resources` 自动生成资源源文件。
-- 数据库文件位于构建目录（例如 `build/tickets.db`），修改表结构请考虑迁移或删除旧 DB 以便程序重建。
+# 重新编译
+mingw32-make -C build clean
+mingw32-make -C build -j2
+```
 
-切换到控制台模式
+**Q: 找不到Qt库**
+```bash
+# 确保设置了正确的Qt路径
+cmake -S . -B build -G "MinGW Makefiles" -DQT_ROOT=/path/to/qt6
+```
 
-- 若需在无 GUI 场景运行：修改 `src/main.cpp`，在登录后实例化并调用 `ConsoleView::run()` 替代 `MainWindow`。
+**Q: MOC相关错误**
+- 确保所有包含 `Q_OBJECT` 的类已在 CMakeLists.txt 中正确配置
+- 清理build目录后重新构建
 
-扩展建议（AI Agent / API）
+### 运行问题
 
-- 本地 IPC：使用 `QLocalServer`/`QLocalSocket` 供本地 agent 调用。
-- HTTP API：嵌入轻量 HTTP 接口（`QTcpServer` 或第三方库）以暴露 REST 操作。
-- CLI：添加 `--headless` 或子命令模式，供自动化脚本或 agent 使用。
+**Q: 中文乱码**
+```bash
+# MSYS2环境
+export LANG=zh_CN.UTF-8
+
+# Windows控制台
+chcp 65001
+```
+
+**Q: 找不到图标**
+- 检查 `resources/resources.qrc` 是否正确配置
+- 确保图标文件在 `resources/icons/` 目录下
+
+**Q: 数据库文件位置**
+- 数据库文件 `tickets.db` 默认在程序运行目录
+- 可在代码中修改 `Database` 类的路径配置
+
+## 📚 开发指南
+
+### 代码规范
+
+1. **命名约定**
+   - 类名: PascalCase (`MainWindow`, `TicketController`)
+   - 函数/变量: camelCase (`onAdd`, `movieName`)
+   - 成员变量: m_ 前缀 (`m_model`, `m_db`)
+   - 常量: 全大写 (`MAX_CAPACITY`)
+
+2. **文件组织**
+   - 每个类对应独立的 .h 和 .cpp 文件
+   - 头文件使用 `#pragma once`
+   - include 顺序: Qt库 → 标准库 → 项目内部
+
+3. **注释规范**
+   ```cpp
+   /**
+    * @brief 简要描述
+    * @param param1 参数1说明
+    * @return 返回值说明
+    */
+   ```
+
+### 添加新功能
+
+1. **添加新对话框**
+```cpp
+// 1. 创建头文件 src/view/mydialog.h
+#pragma once
+#include <QDialog>
+
+class MyDialog : public QDialog {
+    Q_OBJECT
+public:
+    explicit MyDialog(QWidget *parent = nullptr);
+private:
+    // 成员变量
+};
+
+// 2. 更新CMakeLists.txt
+set(MOC_HEADERS
+    ${CMAKE_SOURCE_DIR}/src/view/mydialog.h
+    # ... 其他头文件
+)
+```
+
+2. **添加数据库字段**
+```cpp
+// 在 database.cpp 的 ensureTables() 中添加
+ALTER TABLE tickets ADD COLUMN new_field TEXT
+```
+
+3. **添加图标资源**
+```xml
+<!-- 在 resources/resources.qrc 中添加 -->
+<file>icons/myicon.svg</file>
+```
+
+### 主题定制
+
+编辑 `mainwindow.cpp` 中的 `applyTheme()` 函数：
+
+```cpp
+qApp->setStyleSheet(R"(
+    QMainWindow { 
+        background: #yourcolor; 
+    }
+    /* 更多样式 */
+)");
+```
+
+## 🤝 贡献指南
+
+1. Fork 本仓库
+2. 创建功能分支 (`git checkout -b feature/AmazingFeature`)
+3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
+4. 推送到分支 (`git push origin feature/AmazingFeature`)
+5. 开启 Pull Request
+
+## 📄 许可证
+
+本项目采用 MIT 许可证 - 详见 [LICENSE](LICENSE) 文件
+
+## 🔗 相关链接
+
+- [Qt6 文档](https://doc.qt.io/qt-6/)
+- [CMake 文档](https://cmake.org/documentation/)
+- [SQLite 文档](https://www.sqlite.org/docs.html)
+
+## 💡 未来计划
+
+- [ ] 添加数据统计图表
+- [ ] 实现邮件通知功能
+- [ ] 支持多语言界面
+- [ ] 添加打印票据功能
+- [ ] 实现在线支付接口
+- [ ] 移动端应用支持
 

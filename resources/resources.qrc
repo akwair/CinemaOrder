@@ -10,5 +10,8 @@
     <file>icons/search.svg</file>
     <file>icons/sort.svg</file>
     <file>icons/theme.svg</file>
+    <file>icons/edit.svg</file>
+    <file>icons/ticket.svg</file>
+    <file>icons/info.svg</file>
   </qresource>
 </RCC>

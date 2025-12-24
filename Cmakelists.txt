@@ -4,14 +4,14 @@ project(CinemaOrder LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Enable automatic MOC for QObject/Q_SIGNALS/Q_SLOTS
+# 自动启用 MOC 处理 QObject/Q_SIGNALS/Q_SLOTS
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
-option(QT_ROOT "Path to Qt installation root (e.g. /mingw64)" "")
+option(QT_ROOT "Qt 安装根路径（例如 /mingw64）" "")
 
-# Try to auto-detect common MSYS2/Mingw-w64 Qt installation if not provided
+# 若未提供，尝试自动检测常见的 MSYS2/Mingw-w64 Qt 安装路径
 if(NOT QT_ROOT)
 	if(DEFINED ENV{MINGW_PREFIX})
 		set(QT_ROOT $ENV{MINGW_PREFIX})
@@ -32,7 +32,7 @@ endif()
 
 find_package(Qt6 COMPONENTS Core Sql Widgets QUIET)
 if(NOT Qt6_FOUND)
-	# Final attempt: try explicit common MSYS2 paths
+	# 最后尝试：使用显式的常见 MSYS2 路径
 	if(EXISTS "/mingw64/lib/cmake/Qt6")
 		list(APPEND CMAKE_PREFIX_PATH "/mingw64/lib/cmake/Qt6")
 	endif()
@@ -61,11 +61,11 @@ target_link_libraries(cinema_order
 
 # ========== 资源处理部分 ==========
 set(RESOURCES_DIR "${CMAKE_SOURCE_DIR}/resources")
-message(STATUS "Resources directory: ${RESOURCES_DIR}")
+message(STATUS "资源目录：${RESOURCES_DIR}")
 
 # 检查并添加资源文件
 if(EXISTS "${RESOURCES_DIR}/resources.qrc")
-	message(STATUS "Found resources.qrc")
+	message(STATUS "找到 resources.qrc")
 	
 	# 添加资源编译
 	qt6_add_resources(RESOURCES_RCC "${RESOURCES_DIR}/resources.qrc")
@@ -75,11 +75,11 @@ if(EXISTS "${RESOURCES_DIR}/resources.qrc")
 	
 	# 输出生成的资源文件名
 	foreach(RCC ${RESOURCES_RCC})
-		message(STATUS "Resource file generated: ${RCC}")
+		message(STATUS "生成资源文件：${RCC}")
 	endforeach()
 else()
-	message(WARNING "resources.qrc not found at ${RESOURCES_DIR}/resources.qrc")
-	# 如果没有资源文件，可以创建一个空的
+	message(WARNING "在 ${RESOURCES_DIR}/resources.qrc 未找到 resources.qrc")
+	# 若没有资源文件，可以创建一个空的
 	# file(WRITE "${RESOURCES_DIR}/empty.qrc" "<RCC/>")
 	# qt6_add_resources(RESOURCES_RCC "${RESOURCES_DIR}/empty.qrc")
 endif()
@@ -92,11 +92,12 @@ set(MOC_HEADERS
 	${CMAKE_SOURCE_DIR}/src/view/usermainwindow.h
 	${CMAKE_SOURCE_DIR}/src/view/logindialog.h
 	${CMAKE_SOURCE_DIR}/src/view/registerdialog.h
+	${CMAKE_SOURCE_DIR}/src/view/userinfodialog.h
 )
 qt6_wrap_cpp(MOC_SOURCES ${MOC_HEADERS})
 if(MOC_SOURCES)
 	target_sources(cinema_order PRIVATE ${MOC_SOURCES})
 endif()
 
-message(STATUS "Qt6_DIR=${Qt6_DIR}")
-message(STATUS "CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}")
+message(STATUS "Qt6 目录=${Qt6_DIR}")
+message(STATUS "CMake 前缀路径=${CMAKE_PREFIX_PATH}")

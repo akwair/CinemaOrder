@@ -10,16 +10,19 @@
 #include <iostream>
 #include <qlist.h>
 
-
+// 构造函数
 TicketController::TicketController(Database &db)
     : m_db(db)
 {
 }
 
+// 新增票务
 bool TicketController::addTicket(const Ticket &t)
 {
     QSqlQuery q(m_db.db());
-    q.prepare("INSERT INTO tickets (movieName,cinemaName,showDate,showTime,duration,price,hall,capacity,sold,movie_details) VALUES (?,?,?,?,?,?,?,?,?,?)");
+    // 与数据库 schema 对齐：插入 remain 字段并使用合并的 movie_details
+    // 插入新票务记录到数据库
+    q.prepare("INSERT INTO tickets (movieName,cinemaName,showDate,showTime,duration,price,hall,capacity,remain,sold,movie_details) VALUES (?,?,?,?,?,?,?,?,?,?,?)");
     q.addBindValue(t.movieName);
     q.addBindValue(t.cinemaName);
     q.addBindValue(t.showDate);
@@ -28,6 +31,7 @@ bool TicketController::addTicket(const Ticket &t)
     q.addBindValue(t.price);
     q.addBindValue(t.hall);
     q.addBindValue(t.capacity);
+    q.addBindValue(t.remain > 0 ? t.remain : (t.capacity - t.sold));
     q.addBindValue(t.sold);
     q.addBindValue(t.movieDetails);
     if (!q.exec()) {
@@ -37,6 +41,8 @@ bool TicketController::addTicket(const Ticket &t)
     return true;
 }
 
+
+// 行数据转Ticket
 static Ticket rowToTicket(const QSqlQuery &q)
 {
     Ticket t;
@@ -50,18 +56,16 @@ static Ticket rowToTicket(const QSqlQuery &q)
     t.hall = q.value("hall").toString();
     t.capacity = q.value("capacity").toInt();
     t.sold = q.value("sold").toInt();
+    t.remain = q.value("remain").toInt();
     
-    // 电影详情字段
-    t.description = q.value("description").toString();
-    t.director = q.value("director").toString();
-    t.actors = q.value("actors").toString();
-    t.genre = q.value("genre").toString();
-    t.rating = q.value("rating").toDouble();
-    t.poster = q.value("poster").toString();
+    // 电影详情（合并字段）
+    t.movieDetails = q.value("movie_details").toString();
     
     return t;
 }
 
+
+// 条件查询票务
 QList<Ticket> TicketController::findTickets(const QString &movie, const QString &cinema, const QString &date, const QString &time)
 {
     QList<Ticket> list;
@@ -84,9 +88,12 @@ QList<Ticket> TicketController::findTickets(const QString &movie, const QString 
     return list;
 }
 
+
+// 获取全部票务
 QList<Ticket> TicketController::allTickets(){
     QList<Ticket>list;
     QSqlQuery q(m_db.db());
+    // 查询所有票务记录
     QString sql="SELECT * FROM tickets";
     if(!q.exec(sql)){
         std::cout<<"Query failed"<<std::endl;
@@ -110,6 +117,8 @@ QList<Ticket> TicketController::allTickets(){
     
 }
 
+
+// 排序列出票务
 QList<Ticket> TicketController::listAll(const QString &orderBy)
 {
     QList<Ticket> list;
@@ -124,6 +133,8 @@ QList<Ticket> TicketController::listAll(const QString &orderBy)
     return list;
 }
 
+
+// 删除票务
 bool TicketController::deleteTicket(int id)
 {
     QSqlQuery q(m_db.db());
@@ -136,9 +147,12 @@ bool TicketController::deleteTicket(int id)
     return true;
 }
 
+
+// 售票
 bool TicketController::sellTickets(int id, int qty)
 {
     QSqlQuery q(m_db.db());
+    // 更新已售票数（检查不超过容量）
     q.prepare("UPDATE tickets SET sold = sold + ? WHERE id = ? AND sold + ? <= capacity");
     q.addBindValue(qty);
     q.addBindValue(id);
@@ -150,6 +164,8 @@ bool TicketController::sellTickets(int id, int qty)
     return q.numRowsAffected() > 0;
 }
 
+
+// 退票
 bool TicketController::refundTickets(int id, int qty)
 {
     QSqlQuery q(m_db.db());
@@ -163,7 +179,7 @@ bool TicketController::refundTickets(int id, int qty)
     }
     return q.numRowsAffected() > 0;
 }
-
+// 导出票务到CSV
 bool TicketController::saveToFile(const QString &path)
 {
     QFile f(path);
@@ -185,6 +201,7 @@ bool TicketController::saveToFile(const QString &path)
     return true;
 }
 
+// 从CSV导入票务
 bool TicketController::loadFromFile(const QString &path, bool clearBefore)
 {
     QFile f(path);
@@ -200,7 +217,7 @@ bool TicketController::loadFromFile(const QString &path, bool clearBefore)
         QStringList parts = line.split(',');
         if (parts.size() < 10) continue;
         Ticket t;
-        // ignore id from file (autoincrement)
+        // 忽略文件中的id（自增列）
         t.movieName = parts[1];
         t.cinemaName = parts[2];
         t.showDate = parts[3];

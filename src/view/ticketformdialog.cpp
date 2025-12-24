@@ -11,6 +11,7 @@
 #include <QFormLayout>
 #include <QTextEdit>
 
+// 构造函数：创建新增/编辑表单
 TicketFormDialog::TicketFormDialog(QWidget *parent)
     : QDialog(parent)
 {
@@ -94,6 +95,7 @@ TicketFormDialog::TicketFormDialog(QWidget *parent)
     connect(cancel, &QPushButton::clicked, this, &TicketFormDialog::reject);
 }
 
+// 加载票务到表单控件
 void TicketFormDialog::setTicket(const Ticket &t)
 {
     m_ticket = t;
@@ -106,13 +108,14 @@ void TicketFormDialog::setTicket(const Ticket &t)
     m_hall->setText(t.hall);
     m_capacity->setValue(t.capacity);
     
-    // 设置电影详情字段
-    m_description->setPlainText(t.description);
-    m_director->setText(t.director);
-    m_actors->setText(t.actors);
-    m_genre->setText(t.genre);
-    m_rating->setValue(t.rating);
-    m_poster->setText(t.poster);
+    // 设置电影详情（合并字段）
+    m_description->setPlainText(t.movieDetails);
+    // 其它细分字段保持为空（若需要可在此解析并填充）
+    m_director->clear();
+    m_actors->clear();
+    m_genre->clear();
+    m_rating->setValue(0.0);
+    m_poster->clear();
 }
 
 Ticket TicketFormDialog::ticket() const
@@ -120,9 +123,10 @@ Ticket TicketFormDialog::ticket() const
     return m_ticket;
 }
 
+// 确定：验证并保存数据
 void TicketFormDialog::onAccept()
 {
-    // validation
+    // 数据验证
     if (m_movie->text().trimmed().isEmpty()) { QMessageBox::warning(this, "验证失败", "电影名称不能为空"); return; }
     if (m_cinema->text().trimmed().isEmpty()) { QMessageBox::warning(this, "验证失败", "影院名称不能为空"); return; }
     m_ticket.movieName = m_movie->text().trimmed();
@@ -134,13 +138,8 @@ void TicketFormDialog::onAccept()
     m_ticket.hall = m_hall->text().trimmed();
     m_ticket.capacity = m_capacity->value();
     
-    // 保存电影详情字段
-    m_ticket.description = m_description->toPlainText().trimmed();
-    m_ticket.director = m_director->text().trimmed();
-    m_ticket.actors = m_actors->text().trimmed();
-    m_ticket.genre = m_genre->text().trimmed();
-    m_ticket.rating = m_rating->value();
-    m_ticket.poster = m_poster->text().trimmed();
+    // 保存电影详情（合并字段）
+    m_ticket.movieDetails = m_description->toPlainText().trimmed();
     
     accept();
 }

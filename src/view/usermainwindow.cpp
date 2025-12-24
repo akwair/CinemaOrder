@@ -33,6 +33,7 @@
 #include <QTableWidget>
 #include "../model/database.h"
 
+// 构造函数：创建普通用户主窗口
 UserMainWindow::UserMainWindow(Database &db, TicketController &controller, const QString &username, QWidget *parent)
     : QMainWindow(parent)
     , m_ctrl(controller)
@@ -60,12 +61,20 @@ UserMainWindow::UserMainWindow(Database &db, TicketController &controller, const
     view->setFont(f);
     setCentralWidget(view);
 
-    // 连接双击信号到查看详情功能
-    connect(view, &QTableView::doubleClicked, this, &UserMainWindow::onViewMovieDetail);
+    // 连接双击信号到查看详情功能（使用lambda包装以匹配槽签名）
+    connect(view, &QTableView::doubleClicked, this, [this](const QModelIndex &){ this->onViewMovieDetail(); });
 
     // UI列隐藏
     int idCol = m_model->fieldIndex("id");
     if (idCol >= 0) view->hideColumn(idCol);
+    
+    // 隐藏movie_details列（详情太长，通过双击查看）
+    int detailsCol = m_model->fieldIndex("movie_details");
+    if (detailsCol >= 0) view->hideColumn(detailsCol);
+    
+    // 隐藏remain列（已有capacity和sold，remain可计算得出）
+    int remainCol = m_model->fieldIndex("remain");
+    if (remainCol >= 0) view->hideColumn(remainCol);
 
     // 左侧功能边栏创建
     auto *m_sideDock = new QDockWidget(tr("功能"), this);
@@ -152,6 +161,7 @@ void UserMainWindow::refresh()
     m_model->select();
 }
 
+// 购票操作：选择座位并填写信息
 void UserMainWindow::onBuyTicket()
 {
     auto *view = qobject_cast<QTableView*>(centralWidget());
@@ -227,6 +237,8 @@ void UserMainWindow::onBuyTicket()
     refresh();
 }
 
+// 退票操作：退回已购买的座位
+// 退票操作：退回已购买的座位
 void UserMainWindow::onRefund()
 {
     auto *view = qobject_cast<QTableView*>(centralWidget());
@@ -298,6 +310,7 @@ void UserMainWindow::onRefund()
     refresh();
 }
 
+// 查询功能：按电影/影院/日期筛选可购票次
 void UserMainWindow::onSearch()
 {
     QString key = QInputDialog::getText(this, "查找", "电影或影院关键字:");
@@ -313,6 +326,7 @@ void UserMainWindow::onSearch()
     }
 }
 
+// 恢复显示：清除过滤显示全部票次
 void UserMainWindow::onRestore()
 {
     m_model->setFilter("");
@@ -325,6 +339,7 @@ void UserMainWindow::onRestore()
     }
 }
 
+// 查看我的票务：显示当前用户购买的票
 void UserMainWindow::onViewMyTickets()
 {
     QDialog dlg(this);
@@ -366,6 +381,7 @@ void UserMainWindow::onViewMyTickets()
     dlg.exec();
 }
 
+// 排序功能：按字段排序票务列表
 void UserMainWindow::onSort()
 {
     QStringList items; items << "showDate" << "showTime" << "price";
@@ -375,6 +391,7 @@ void UserMainWindow::onSort()
     refresh();
 }
 
+// 主题切换：浅/深色主题平滑过渡
 void UserMainWindow::onToggleTheme()
 {
     m_targetDark = !m_darkTheme;
@@ -409,31 +426,105 @@ void UserMainWindow::applyTheme(bool dark)
         return;
     }
 
-    // fallback inline styles
+    // 内置样式备选
     if (dark) {
         QString darkStyle = R"(
             QMainWindow { background: #2b2b2b; color: #ffffff; }
-            QTableView { gridline-color: #555555; selection-background-color: #555555; alternate-background-color: #3a3a3a; background: #2b2b2b; color: #ffffff; }
-            QHeaderView::section { background: #3a3a3a; color: #ffffff; padding: 4px; }
+            QTableView { 
+                gridline-color: #555555; 
+                selection-background-color: #2c7be5; 
+                selection-color: white;
+                alternate-background-color: #3a3a3a; 
+                background: #2b2b2b; 
+                color: #ffffff; 
+            }
+            QTableWidget {
+                gridline-color: #555555;
+                selection-background-color: #2c7be5;
+                selection-color: white;
+                alternate-background-color: #3a3a3a;
+                background: #2b2b2b;
+                color: #ffffff;
+            }
+            QTableWidget::item:selected {
+                background: #2c7be5;
+                color: white;
+            }
+            QHeaderView::section { 
+                background: #3a3a3a; 
+                color: #ffffff; 
+                padding: 4px; 
+                border: 1px solid #555555;
+                font-weight: bold;
+            }
+            QDialog {
+                background: #2b2b2b;
+                color: #ffffff;
+            }
             QDockWidget { background: #3a3a3a; color: #ffffff; }
             QDockWidget::title { background: #4a4a4a; color: #ffffff; padding: 4px; }
-            QPushButton { padding: 6px 12px; border-radius: 4px; background: #555555; color: #ffffff; border: 1px solid #777777; outline: none; }
+            QPushButton { 
+                padding: 6px 12px; 
+                border-radius: 4px; 
+                background: #555555; 
+                color: #ffffff; 
+                border: 1px solid #777777; 
+            }
             QPushButton:hover { background: #666666; border: 1px solid #999999; }
             QPushButton:pressed { background: #444444; border: 1px solid #555555; }
-            QPushButton:focus { outline: none; }
+            QLabel { color: #ffffff; }
         )";
         qApp->setStyleSheet(darkStyle);
     } else {
         QString lightStyle = R"(
-            QMainWindow { background: #f7f9fc; }
-            QTableView { gridline-color: #e6eef8; selection-background-color: #cdd4d9ff; alternate-background-color: #eea317ff; }
-            QHeaderView::section { background: #e9f2fb; padding: 4px; }
-            QDockWidget { background: #eef6ff; }
-            QDockWidget::title { background: #e0eef8; padding: 4px; }
-            QPushButton { padding: 6px 12px; border-radius: 4px; background: #ffffff; color: #222; border: 1px solid #d0d8e8; outline: none; }
-            QPushButton:hover { background: #eef6ff; border: 1px solid #bbcde2ff; }
-            QPushButton:pressed { background: #dce7f4; border: 1px solid #80a0d8; }
-            QPushButton:focus { outline: none; }
+            QMainWindow { background: #f7f9fc; color: #333333; }
+            QTableView { 
+                gridline-color: #e6eef8; 
+                selection-background-color: #4a90e2; 
+                selection-color: white;
+                alternate-background-color: #f9fbfd; 
+                background: #ffffff;
+                color: #333333;
+            }
+            QTableWidget {
+                gridline-color: #e6eef8;
+                selection-background-color: #4a90e2;
+                selection-color: white;
+                alternate-background-color: #f9fbfd;
+                background: #ffffff;
+                color: #333333;
+            }
+            QTableWidget::item {
+                padding: 4px;
+                color: #333333;
+            }
+            QTableWidget::item:selected {
+                background: #4a90e2;
+                color: white;
+            }
+            QHeaderView::section { 
+                background: #e9f2fb; 
+                color: #333333;
+                padding: 8px;
+                border: 1px solid #d0d8e8;
+                font-weight: bold;
+            }
+            QDialog {
+                background: #f7f9fc;
+                color: #333333;
+            }
+            QDockWidget { background: #eef6ff; color: #333333; }
+            QDockWidget::title { background: #e0eef8; color: #333333; padding: 4px; }
+            QPushButton { 
+                padding: 6px 12px; 
+                border-radius: 4px; 
+                background: #ffffff; 
+                color: #333333; 
+                border: 1px solid #d0d8e8; 
+            }
+            QPushButton:hover { background: #eef6ff; border: 1px solid #4a90e2; }
+            QPushButton:pressed { background: #dce7f4; border: 1px solid #2c7be5; }
+            QLabel { color: #333333; }
         )";
         qApp->setStyleSheet(lightStyle);
     }
@@ -441,6 +532,7 @@ void UserMainWindow::applyTheme(bool dark)
     if (m_settings) m_settings->setValue("ui/dark", dark);
 }
 
+// 动画完成：应用新主题移除视觉效果
 void UserMainWindow::onFadeFinished()
 {
     applyTheme(m_targetDark);
@@ -449,6 +541,7 @@ void UserMainWindow::onFadeFinished()
     m_fadeAnim->start();
 }
 
+// 查看电影详情：双击列表查看
 void UserMainWindow::onViewMovieDetail()
 {
     // 检查用户是否选择了电影
@@ -464,23 +557,18 @@ void UserMainWindow::onViewMovieDetail()
     int row = selection.first().row();
     int ticketId = m_model->data(m_model->index(row, 0)).toInt(); // 获取ID列的值
     
-    // 从数据库查询电影详情
+    // 从数据库查询电影详情（使用统一的 movie_details 字段）
     QSqlQuery q(m_db.db());
-    q.prepare("SELECT movieName, description, director, actors, genre, rating, poster FROM tickets WHERE id = ?");
+    q.prepare("SELECT movieName, movie_details FROM tickets WHERE id = ?");
     q.addBindValue(ticketId);
     
     if (q.exec() && q.next()) {
         QString movieName = q.value(0).toString();
-        QString description = q.value(1).toString();
-        QString director = q.value(2).toString();
-        QString actors = q.value(3).toString();
-        QString genre = q.value(4).toString();
-        double rating = q.value(5).toDouble();
-        QString poster = q.value(6).toString();
+        QString details = q.value(1).toString();
         
         // 显示电影详情对话框
         MovieDetailDialog dlg(this);
-        dlg.setMovieInfo(movieName, description, director, actors, genre, rating, poster);
+        dlg.setMovieInfo(movieName, details);
         dlg.setEditMode(false); // 用户只能查看，不能编辑
         dlg.exec();
     } else {

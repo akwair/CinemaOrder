@@ -1,9 +1,7 @@
 #include "moviedetaildialog.h"
-#include <QFileDialog>
 #include <QMessageBox>
-#include <QPixmap>
-#include <QHBoxLayout>
 
+// 构造函数：创建电影详情对话框
 MovieDetailDialog::MovieDetailDialog(QWidget *parent)
     : QDialog(parent), m_editMode(false)
 {
@@ -39,20 +37,6 @@ MovieDetailDialog::MovieDetailDialog(QWidget *parent)
     
     mainLayout->addWidget(basicGroup);
     
-    // 海报组
-    QGroupBox *posterGroup = new QGroupBox("海报", this);
-    QHBoxLayout *posterLayout = new QHBoxLayout(posterGroup);
-    
-    posterEdit = new QLineEdit(this);
-    posterEdit->setPlaceholderText("选择海报文件...");
-    posterLayout->addWidget(posterEdit);
-    
-    posterBtn = new QPushButton("选择文件", this);
-    connect(posterBtn, &QPushButton::clicked, this, &MovieDetailDialog::onSelectPoster);
-    posterLayout->addWidget(posterBtn);
-    
-    mainLayout->addWidget(posterGroup);
-    
     // 剧情简介组
     QGroupBox *plotGroup = new QGroupBox("剧情简介", this);
     QVBoxLayout *plotLayout = new QVBoxLayout(plotGroup);
@@ -79,19 +63,44 @@ MovieDetailDialog::MovieDetailDialog(QWidget *parent)
     setEditMode(false);
 }
 
-void MovieDetailDialog::setMovieInfo(const QString &movieName, const QString &description,
-                                   const QString &director, const QString &actors,
-                                   const QString &genre, double rating, const QString &poster)
+// 设置电影信息（从合并字段解析）
+void MovieDetailDialog::setMovieInfo(const QString &movieName, const QString &description)
 {
     movieNameLabel->setText(movieName);
-    descriptionEdit->setPlainText(description);
-    directorEdit->setText(director);
-    actorsEdit->setText(actors);
-    genreEdit->setText(genre);
-    ratingSpin->setValue(rating);
-    posterEdit->setText(poster);
+    
+    // 解析movie_details格式的字符串
+    QStringList lines = description.split('\n');
+    QString desc;
+    QString dir;
+    QString act;
+    QString gen;
+    double rat = 0.0;
+    
+    for (const QString &line : lines) {
+        QString trimmed = line.trimmed();
+        if (trimmed.startsWith("导演: ")) {
+            dir = trimmed.mid(4).trimmed();
+        } else if (trimmed.startsWith("主演: ")) {
+            act = trimmed.mid(4).trimmed();
+        } else if (trimmed.startsWith("类型: ")) {
+            gen = trimmed.mid(4).trimmed();
+        } else if (trimmed.startsWith("评分: ")) {
+            rat = trimmed.mid(4).trimmed().toDouble();
+        } else if (!trimmed.isEmpty()) {
+            // 不是特定字段，当作剧情简介
+            if (!desc.isEmpty()) desc += "\n";
+            desc += trimmed;
+        }
+    }
+    
+    descriptionEdit->setPlainText(desc);
+    directorEdit->setText(dir);
+    actorsEdit->setText(act);
+    genreEdit->setText(gen);
+    ratingSpin->setValue(rat);
 }
 
+// 切换编辑模式（输入或只读）
 void MovieDetailDialog::setEditMode(bool editMode)
 {
     m_editMode = editMode;
@@ -101,8 +110,6 @@ void MovieDetailDialog::setEditMode(bool editMode)
     genreEdit->setReadOnly(!editMode);
     ratingSpin->setReadOnly(!editMode);
     descriptionEdit->setReadOnly(!editMode);
-    posterEdit->setReadOnly(!editMode);
-    posterBtn->setEnabled(editMode);
     
     if (editMode) {
         setWindowTitle("编辑电影详情");
@@ -113,12 +120,40 @@ void MovieDetailDialog::setEditMode(bool editMode)
     }
 }
 
-void MovieDetailDialog::onSelectPoster()
+// 获取合并字段（用于保存）
+QString MovieDetailDialog::getFullDetails() const
 {
-    QString fileName = QFileDialog::getOpenFileName(this, "选择海报",
-                                                   "",
-                                                   "图片文件 (*.png *.jpg *.jpeg *.bmp *.gif)");
-    if (!fileName.isEmpty()) {
-        posterEdit->setText(fileName);
+    QStringList parts;
+    
+    // 剧情简介
+    QString desc = descriptionEdit->toPlainText().trimmed();
+    if (!desc.isEmpty()) {
+        parts << desc;
     }
+    
+    // 导演
+    QString director = directorEdit->text().trimmed();
+    if (!director.isEmpty()) {
+        parts << ("导演: " + director);
+    }
+    
+    // 主演
+    QString actors = actorsEdit->text().trimmed();
+    if (!actors.isEmpty()) {
+        parts << ("主演: " + actors);
+    }
+    
+    // 类型
+    QString genre = genreEdit->text().trimmed();
+    if (!genre.isEmpty()) {
+        parts << ("类型: " + genre);
+    }
+    
+    // 评分
+    double rating = ratingSpin->value();
+    if (rating > 0.0) {
+        parts << ("评分: " + QString::number(rating, 'f', 1));
+    }
+    
+    return parts.join("\n");
 }

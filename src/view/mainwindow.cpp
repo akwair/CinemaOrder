@@ -36,7 +36,9 @@
 #include <QComboBox>
 #include <QLabel>
 #include "../model/database.h"
+#include <QModelIndex>
 
+// 构造函数：创建管理员主窗口
 MainWindow::MainWindow(Database &db, TicketController &controller, const QString &username, QWidget *parent)
     : QMainWindow(parent)                              
     , m_ctrl(controller)                           
@@ -72,12 +74,20 @@ MainWindow::MainWindow(Database &db, TicketController &controller, const QString
     setCentralWidget(view);                            // 将表格视图设置为主窗口的中心部件
 
     // 连接双击信号到查看详情功能
-    connect(view, &QTableView::doubleClicked, this, &MainWindow::onViewOrEditMovieDetail);
+    connect(view, &QTableView::doubleClicked, this, [this](const QModelIndex &){ this->onViewOrEditMovieDetail(); });
 
     // UI列隐藏
     // 隐藏内部ID列（不显示给用户看，但数据模型中仍存在）
     int idCol = m_model->fieldIndex("id");             // 获取"id"字段在模型中的列索引
     if (idCol >= 0) view->hideColumn(idCol);           // 如果找到ID列，则隐藏它
+    
+    // 隐藏movie_details列（详情太长，通过双击查看）
+    int detailsCol = m_model->fieldIndex("movie_details");
+    if (detailsCol >= 0) view->hideColumn(detailsCol);
+    
+    // 隐藏remain列（已有capacity和sold，remain可计算得出）
+    int remainCol = m_model->fieldIndex("remain");
+    if (remainCol >= 0) view->hideColumn(remainCol);
 
     // 左侧功能边栏创建
     m_sideDock = new QDockWidget(tr("功能"), this);    // 创建可停靠窗口（边栏）
@@ -174,14 +184,15 @@ void MainWindow::refresh()
     m_model->select();
 }
 
+// 新增场次：调用表单对话框
 void MainWindow::onAdd()
 {
-    // Use TicketFormDialog for a nicer add form
+    // 使用表单对话框添加新场次
     TicketFormDialog dlg(this);
     if (dlg.exec() != QDialog::Accepted) return;
     Ticket t = dlg.ticket();
     QSqlQuery q(m_model->database());
-    q.prepare("INSERT INTO tickets (movieName,cinemaName,showDate,showTime,duration,price,hall,capacity,remain,sold) VALUES (?,?,?,?,?,?,?,?,?,?)");
+    q.prepare("INSERT INTO tickets (movieName,cinemaName,showDate,showTime,duration,price,hall,capacity,remain,sold,movie_details) VALUES (?,?,?,?,?,?,?,?,?,?,?)");
     q.addBindValue(t.movieName);
     q.addBindValue(t.cinemaName);
     q.addBindValue(t.showDate);
@@ -192,9 +203,10 @@ void MainWindow::onAdd()
     q.addBindValue(t.capacity);
     q.addBindValue(t.capacity-t.sold);
     q.addBindValue(0);
+    q.addBindValue(t.movieDetails);
     if (!q.exec()) QMessageBox::warning(this, "错误", q.lastError().text());
     refresh();
-    // clear selection so newly-added row is not left selected
+    // 清空选中状态
     auto *view = qobject_cast<QTableView*>(centralWidget());
     if (view && view->selectionModel()) {
         qDebug() << "当前选中行数:" << view->selectionModel()->selectedRows().size();
@@ -206,6 +218,7 @@ void MainWindow::onAdd()
     }
 }
 
+// 删除场次：永久删除指定票务
 void MainWindow::onDelete()
 {
     auto *view = qobject_cast<QTableView*>(centralWidget()); if (!view) return;
@@ -218,6 +231,7 @@ void MainWindow::onDelete()
 }
 
 //售票槽函数
+// 售票操作：选择座位进行售票
 void MainWindow::onSell()
 {
     // 获取主窗口中的表格视图控件
@@ -327,6 +341,7 @@ void MainWindow::onSell()
 }
 
 //退票槽函数
+// 退票操作：用户选择退回的座位并更新状态
 void MainWindow::onRefund()
 {
     // 获取主窗口中的表格视图控件
@@ -412,6 +427,7 @@ void MainWindow::onRefund()
     refresh();
 }
 
+// 导入数据：从CSV文件恢复票务数据
 void MainWindow::onImport()
 {
     QString path = QFileDialog::getOpenFileName(this, "导入文件", QString(), "CSV Files (*.csv);;All Files (*)");
@@ -420,6 +436,7 @@ void MainWindow::onImport()
     refresh();
 }
 
+// 导出数据：将票务信息保存到CSV文件
 void MainWindow::onExport()
 {
     QString path = QFileDialog::getSaveFileName(this, "导出文件", QString(), "CSV Files (*.csv);;All Files (*)");
@@ -427,6 +444,7 @@ void MainWindow::onExport()
     m_ctrl.saveToFile(path);
 }
 
+// 查询功能：按电影名/影院/日期/时间筛选票务
 void MainWindow::onSearch()
 {
     // 创建查找类型选择对话框
@@ -452,9 +470,9 @@ void MainWindow::onSearch()
     m_model->setFilter(filter);
     refresh();
     
-    // change search button into a restore button
+    // 搜索按钮改为还原按钮
     if (m_searchBtn) {
-        // disconnect previous connection and connect to onRestore
+        // 断开搜索连接，连接还原功能
         QObject::disconnect(m_searchBtn, SIGNAL(clicked()), this, SLOT(onSearch()));
         connect(m_searchBtn, &QPushButton::clicked, this, &MainWindow::onRestore);
         m_searchBtn->setText(tr("还原"));
@@ -462,9 +480,10 @@ void MainWindow::onSearch()
     }
 }
 
+// 恢复显示：清除查询过滤显示全部票务
 void MainWindow::onRestore()
 {
-    // clear filter and restore original list
+    // 清除过滤，恢复原始列表
     m_model->setFilter("");
     refresh();
     if (m_searchBtn) {
@@ -475,9 +494,11 @@ void MainWindow::onRestore()
     }
 }
 
+// 排序功能：按指定字段排序票务数据
 void MainWindow::onSort()
 {
-    QStringList items; items << "showDate" << "showTime" << "price";
+    QStringList items; 
+    items << "演出日期" << "演出时间" << "价格";
     bool ok; QString choice = QInputDialog::getItem(this, "排序", "依据:", items, 0, false, &ok);
     if (!ok || choice.isEmpty()) return;
     m_model->setSort(m_model->fieldIndex(choice), Qt::AscendingOrder);
@@ -486,12 +507,12 @@ void MainWindow::onSort()
 
 void MainWindow::applyTheme(bool dark)
 {
-    // try load external stylesheet files first (project styles folder)
+    // 尝试加载外部样式文件
     auto loadSheet = [](const QString &filename)->QString{
         QStringList candidates;
         QString appDir = QCoreApplication::applicationDirPath();
         candidates << (appDir + "/styles/" + filename);
-        candidates << (appDir + "/../styles/" + filename); // when running from build/
+        candidates << (appDir + "/../styles/" + filename);
         candidates << (QDir::currentPath() + "/styles/" + filename);
         for (const QString &p : candidates) {
             QFile f(p);
@@ -511,7 +532,7 @@ void MainWindow::applyTheme(bool dark)
         return;
     }
 
-    // fallback to built-in styles if external files not found
+    // 默认内置样式
     if (dark) {
     qApp->setStyleSheet(R"(
         /* 暗色主题 */
@@ -671,9 +692,10 @@ void MainWindow::applyTheme(bool dark)
     )");
 }}
 
+// 主题切换：浅色/深色主题平滑过渡
 void MainWindow::onToggleTheme()
 {
-    // initiate fade-out; theme change will be applied in onFadeFinished
+    // 启动淡出，主题变更在onFadeFinished中应用
     m_targetDark = !m_darkTheme;
     m_fadeAnim->stop();
     m_fadeAnim->setStartValue(1.0);
@@ -681,9 +703,10 @@ void MainWindow::onToggleTheme()
     m_fadeAnim->start();
 }
 
+// 动画完成处理：应用新主题并移除视觉效果
 void MainWindow::onFadeFinished()
 {
-    // if we've just faded out (opacity == 0), apply theme and fade back in
+    // 如果已淡出，应用主题并淡入
     if (m_opEffect->opacity() < 0.01) {
         applyTheme(m_targetDark);
         m_darkTheme = m_targetDark;
@@ -694,6 +717,7 @@ void MainWindow::onFadeFinished()
     }
 }
 
+// 查看全部票务：显示所有未售完的票务
 void MainWindow::onViewAllTickets()
 {
     QDialog dlg(this);
@@ -813,6 +837,7 @@ void MainWindow::onViewAllTickets()
     dlg.exec();
 }
 
+// 编辑选中票务的电影详情信息
 void MainWindow::onEditMovieDetail()
 {
     // 检查管理员是否选择了电影
@@ -828,40 +853,30 @@ void MainWindow::onEditMovieDetail()
     int row = selection.first().row();
     int ticketId = m_model->data(m_model->index(row, 0)).toInt(); // 获取ID列的值
     
-    // 从数据库查询当前电影详情
+    // 从数据库查询当前电影详情（使用统一的 movie_details 字段）
     QSqlQuery q(m_db.db());
-    q.prepare("SELECT movieName, description, director, actors, genre, rating, poster FROM tickets WHERE id = ?");
+    q.prepare("SELECT movieName, movie_details FROM tickets WHERE id = ?");
     q.addBindValue(ticketId);
     
     if (q.exec() && q.next()) {
         QString movieName = q.value(0).toString();
-        QString description = q.value(1).toString();
-        QString director = q.value(2).toString();
-        QString actors = q.value(3).toString();
-        QString genre = q.value(4).toString();
-        double rating = q.value(5).toDouble();
-        QString poster = q.value(6).toString();
+        QString details = q.value(1).toString();
         
         // 显示电影详情编辑对话框
         MovieDetailDialog dlg(this);
-        dlg.setMovieInfo(movieName, description, director, actors, genre, rating, poster);
+        dlg.setMovieInfo(movieName, details);
         dlg.setEditMode(true); // 管理员可以编辑
         
         if (dlg.exec() == QDialog::Accepted) {
-            // 保存修改到数据库
+            // 保存修改到数据库（仅更新 movie_details）
             QSqlQuery updateQuery(m_db.db());
-            updateQuery.prepare("UPDATE tickets SET description = ?, director = ?, actors = ?, genre = ?, rating = ?, poster = ? WHERE id = ?");
-            updateQuery.addBindValue(dlg.getDescription());
-            updateQuery.addBindValue(dlg.getDirector());
-            updateQuery.addBindValue(dlg.getActors());
-            updateQuery.addBindValue(dlg.getGenre());
-            updateQuery.addBindValue(dlg.getRating());
-            updateQuery.addBindValue(dlg.getPoster());
+            updateQuery.prepare("UPDATE tickets SET movie_details = ? WHERE id = ?");
+            updateQuery.addBindValue(dlg.getFullDetails());
             updateQuery.addBindValue(ticketId);
             
             if (updateQuery.exec()) {
-                QMessageBox::information(this, "成功", "电影详情已更新");
                 refresh(); // 刷新表格显示
+                QMessageBox::information(this, "成功", "电影详情已更新");
             } else {
                 QMessageBox::warning(this, "错误", "更新电影详情失败: " + updateQuery.lastError().text());
             }
@@ -871,6 +886,7 @@ void MainWindow::onEditMovieDetail()
     }
 }
 
+// 双击电影行查看或编辑详情
 void MainWindow::onViewOrEditMovieDetail()
 {
     // 检查管理员是否选择了电影
@@ -886,19 +902,14 @@ void MainWindow::onViewOrEditMovieDetail()
     int row = selection.first().row();
     int ticketId = m_model->data(m_model->index(row, 0)).toInt(); // 获取ID列的值
     
-    // 从数据库查询当前电影详情
+    // 从数据库查询当前电影详情（使用统一的 movie_details 字段）
     QSqlQuery q(m_db.db());
-    q.prepare("SELECT movieName, description, director, actors, genre, rating, poster FROM tickets WHERE id = ?");
+    q.prepare("SELECT movieName, movie_details FROM tickets WHERE id = ?");
     q.addBindValue(ticketId);
     
     if (q.exec() && q.next()) {
         QString movieName = q.value(0).toString();
-        QString description = q.value(1).toString();
-        QString director = q.value(2).toString();
-        QString actors = q.value(3).toString();
-        QString genre = q.value(4).toString();
-        double rating = q.value(5).toDouble();
-        QString poster = q.value(6).toString();
+        QString details = q.value(1).toString();
         
         // 显示操作选择对话框
         QMessageBox msgBox(this);
@@ -915,30 +926,25 @@ void MainWindow::onViewOrEditMovieDetail()
         if (msgBox.clickedButton() == viewBtn) {
             // 查看详情模式
             MovieDetailDialog dlg(this);
-            dlg.setMovieInfo(movieName, description, director, actors, genre, rating, poster);
+            dlg.setMovieInfo(movieName, details);
             dlg.setEditMode(false); // 只读模式
             dlg.exec();
         } else if (msgBox.clickedButton() == editBtn) {
             // 编辑详情模式
             MovieDetailDialog dlg(this);
-            dlg.setMovieInfo(movieName, description, director, actors, genre, rating, poster);
+            dlg.setMovieInfo(movieName, details);
             dlg.setEditMode(true); // 编辑模式
             
             if (dlg.exec() == QDialog::Accepted) {
-                // 保存修改到数据库
+                // 保存修改到数据库（仅更新 movie_details）
                 QSqlQuery updateQuery(m_db.db());
-                updateQuery.prepare("UPDATE tickets SET description = ?, director = ?, actors = ?, genre = ?, rating = ?, poster = ? WHERE id = ?");
-                updateQuery.addBindValue(dlg.getDescription());
-                updateQuery.addBindValue(dlg.getDirector());
-                updateQuery.addBindValue(dlg.getActors());
-                updateQuery.addBindValue(dlg.getGenre());
-                updateQuery.addBindValue(dlg.getRating());
-                updateQuery.addBindValue(dlg.getPoster());
+                updateQuery.prepare("UPDATE tickets SET movie_details = ? WHERE id = ?");
+                updateQuery.addBindValue(dlg.getFullDetails());
                 updateQuery.addBindValue(ticketId);
                 
                 if (updateQuery.exec()) {
-                    QMessageBox::information(this, "成功", "电影详情已更新");
                     refresh(); // 刷新表格显示
+                    QMessageBox::information(this, "成功", "电影详情已更新");
                 } else {
                     QMessageBox::warning(this, "错误", "更新电影详情失败: " + updateQuery.lastError().text());
                 }

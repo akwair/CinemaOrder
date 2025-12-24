@@ -5,33 +5,40 @@
 
 class Database;
 
+// 座位信息数据结构
 struct SeatInfo {
-    int id; // seats table id, 0 if not persisted yet
-    int row;
-    int col;
-    QString label;
-    int status; // 0 available, 1 sold
-    QString username;
-    QString userFullName;
-    QString userPhoneNumber;
-    QString userEmail;
+    int id;                     // 座位表主键
+    int row;                    // 座位行号
+    int col;                    // 座位列号
+    QString label;              // 座位标签(如A1)
+    int status;                 // 座位状态(0可用 1已售)
+    QString username;           // 购票用户
+    QString userFullName;       // 用户姓名
+    QString userPhoneNumber;    // 用户电话
+    QString userEmail;          // 用户邮箱
 };
 
+// 座位选择对话框
 class SeatSelectionDialog : public QDialog {
     Q_OBJECT
 public:
-    SeatSelectionDialog(Database &db, int ticketId, int capacity, int flag, const QString &username, QWidget *parent = nullptr);//flag 0为售票，1为退票
+    // flag: 0=售票 1=退票
+    SeatSelectionDialog(Database &db, int ticketId, int capacity, int flag, const QString &username, QWidget *parent = nullptr);
+    // 获取选中座位列表
     QVector<SeatInfo> selectedSeats() const { return m_selected; }
 private slots:
+    // 座位按钮点击处理
     void toggleSeat();
 private:
     bool eventFilter(QObject *obj, QEvent *event) override;
+    // 初始化座位数据
     void ensureSeatsCreated(int ticketId, int capacity);
+    // 加载座位数据
     void loadSeats(int ticketId);
-    Database &m_db;
-    int m_ticketId;
-    int m_flag; // 0 for sell, 1 for refund
-    QString m_username;
-    QVector<SeatInfo> m_seats;
-    QVector<SeatInfo> m_selected;
+    Database &m_db;              // 数据库
+    int m_ticketId;              // 票务ID
+    int m_flag;                  // 操作类型(0售 1退)
+    QString m_username;          // 当前用户
+    QVector<SeatInfo> m_seats;   // 所有座位
+    QVector<SeatInfo> m_selected;// 选中座位
 };

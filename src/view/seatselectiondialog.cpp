@@ -12,6 +12,7 @@
 #include <QEvent>
 
 
+// 构造函数：创建座位选择对话框（flag:0售票 1退票）
 SeatSelectionDialog::SeatSelectionDialog(Database &db, int ticketId, int capacity, int flag, const QString &username, QWidget *parent)
     : QDialog(parent), m_db(db), m_ticketId(ticketId), m_flag(flag), m_username(username)
 {
@@ -26,7 +27,7 @@ SeatSelectionDialog::SeatSelectionDialog(Database &db, int ticketId, int capacit
     QWidget *gridWidget = new QWidget(this);
     QGridLayout *grid = new QGridLayout(gridWidget);
 
-    // compute layout: try 10 rows
+    // 计算位置：10行
     int rows = 10;
     int cols = (m_seats.size() + rows - 1) / rows;
     int idx = 0;
@@ -40,7 +41,7 @@ SeatSelectionDialog::SeatSelectionDialog(Database &db, int ticketId, int capacit
                 btn->setEnabled(false);
                 btn->setStyleSheet("background: #c05050; color: #fff;");
                 btn->setToolTip("已售出");
-                btn->installEventFilter(this); // Enable hover events
+                btn->installEventFilter(this); // 启用悬停事件
             }
             else if (s.status==0&&flag==1) {
                 btn->setEnabled(false);
@@ -68,6 +69,7 @@ SeatSelectionDialog::SeatSelectionDialog(Database &db, int ticketId, int capacit
     resize(600, 400);
 }
 
+// 初始化座位数据（首次创建）
 void SeatSelectionDialog::ensureSeatsCreated(int ticketId, int capacity)
 {
     qDebug() << "ensureSeatsCreated: ticketId=" << ticketId << ", capacity=" << capacity;
@@ -81,10 +83,10 @@ void SeatSelectionDialog::ensureSeatsCreated(int ticketId, int capacity)
     if (q.next()) {
         int count = q.value(0).toInt();
         qDebug() << "Found" << count << "seats for ticket" << ticketId;
-        if (count > 0) return; // already created
+        if (count > 0) return; // 已创建
     }
     qDebug() << "Creating seats for ticket" << ticketId;
-    // create seats rows=10
+    // 创建座位簇
     int rows = 10;
     int cols = (capacity + rows - 1) / rows;
     int created = 0;
@@ -109,6 +111,7 @@ void SeatSelectionDialog::ensureSeatsCreated(int ticketId, int capacity)
     qDebug() << "Created" << created << "seats";
 }
 
+// 加载指定票务的座位信息
 void SeatSelectionDialog::loadSeats(int ticketId)
 {
     qDebug() << "loadSeats: ticketId=" << ticketId;
@@ -137,6 +140,7 @@ void SeatSelectionDialog::loadSeats(int ticketId)
     qDebug() << "Total loaded seats:" << m_seats.size();
 }
 
+// 座位按钮：选中/取消
 void SeatSelectionDialog::toggleSeat()
 {
     QPushButton *btn = qobject_cast<QPushButton*>(sender());
@@ -145,14 +149,14 @@ void SeatSelectionDialog::toggleSeat()
     if (idx < 0 || idx >= m_seats.size()) return;
 
     if (btn->isChecked()) {
-        // Only show user info dialog for selling tickets (flag == 0)
+        // 仅在售票时显示用户信息对话框
         if (m_flag == 0) {
             UserInfoDialog userInfoDlg(this);
             if (userInfoDlg.exec() != QDialog::Accepted) {
                 btn->setChecked(false);
-                return; //用户取消
+                return;
             }
-            // Store user info in the seat info for later use
+            // 保存用户信息到座位
             m_seats[idx].userFullName = userInfoDlg.getFullName();
             m_seats[idx].userPhoneNumber = userInfoDlg.getPhoneNumber();
             m_seats[idx].userEmail = userInfoDlg.getEmail();
@@ -160,7 +164,7 @@ void SeatSelectionDialog::toggleSeat()
         m_selected.append(m_seats[idx]);
         btn->setStyleSheet("background: #6aa84f; color: #fff;");
     } else {
-        // remove from selected
+        // 从已选中清除
         for (int i = 0; i < m_selected.size(); ++i) {
             if (m_selected[i].id == m_seats[idx].id) { m_selected.remove(i); break; }
         }
@@ -168,6 +172,7 @@ void SeatSelectionDialog::toggleSeat()
     }
 }
 
+// 事件过滤：显示座位悬浮提示
 bool SeatSelectionDialog::eventFilter(QObject *obj, QEvent *event)
 {
     if (event->type() == QEvent::Enter) {
@@ -176,9 +181,9 @@ bool SeatSelectionDialog::eventFilter(QObject *obj, QEvent *event)
             int idx = btn->property("seat_index").toInt();
             if (idx >= 0 && idx < m_seats.size()) {
                 const SeatInfo &s = m_seats[idx];
-                if (s.status == 1) { // Only show info for sold seats
-                    QString info = QString("座位: %1\n购买者: %2\n电话: %3\n邮箱: %4")
-                                   .arg(s.label, s.userFullName, s.userPhoneNumber, s.userEmail);
+                if (s.status == 1) { // 仅显示已售座位信息
+                    QString info = QString("座位: %1\n用户名: %2\n购买者: %3\n电话: %4\n邮箱: %5")
+                                   .arg(s.label, s.username, s.userFullName, s.userPhoneNumber, s.userEmail);
                     btn->setToolTip(info);
                 }
             }

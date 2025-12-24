@@ -1,28 +1,21 @@
 #include <QApplication>
 #include <QDebug>
-#ifdef _WIN32
-#include <windows.h>
-#include <locale.h>
-#endif
 #include "model/database.h"
 #include "controller/ticketcontroller.h"
 #include "view/mainwindow.h"
 #include "view/usermainwindow.h"
 #include "auth/authmanager.h"
 #include "view/logindialog.h"
+#include "view/logindialog.h"
+#include "auth/authmanager.h"
 
+// 主程序入口
 int main(int argc, char **argv)
 {
-#ifdef _WIN32
-    // set C locale and console codepage to UTF-8 for proper console output
-    setlocale(LC_ALL, "");
-    SetConsoleOutputCP(CP_UTF8);
-    SetConsoleCP(CP_UTF8);
-#endif
-
     QApplication app(argc, argv);
-    // Use Fusion style and a light modern stylesheet
+    // 应用Fusion样式
     QApplication::setStyle("Fusion");
+    // 自定义样式表
     QString style = R"(
         QMainWindow { background: #f7f9fc; }
         QTableView { gridline-color: #e6eef8; selection-background-color: #cdd4d9ff; alternate-background-color: #eea317ff; }
@@ -35,28 +28,33 @@ int main(int argc, char **argv)
         QPushButton:released { background: #ffffff; border: 1px solid #d0d8e8; }
         QPushButton:focus { outline: none; }
     )";
+    // 应用样式表
     app.setStyleSheet(style);
+    // 初始化数据库连接
     Database db("tickets.db");
     if (!db.open()) {
         qCritical() << "无法打开数据库";
         return 1;
     }
+    // 创建票务业务控制器
     TicketController ctrl(db);
-    // Authentication
-    #include "view/logindialog.h"
-    #include "auth/authmanager.h"
+    // 用户认证
+    // 创建认证管理器和登录对话框
     AuthManager auth(db);
     LoginDialog loginDlg(auth);
     if (loginDlg.exec() != QDialog::Accepted) {
-        return 0; // user cancelled or failed to login
+        return 0;
     }
 
+    // 根据用户角色显示对应窗口
     int userRole = loginDlg.getRole();
     if (auth.isAdmin(userRole)) {
+        // 管理员窗口（完整功能）
         MainWindow w(db, ctrl, loginDlg.getUsername());
         w.show();
         return app.exec();
     } else {
+        // 普通用户窗口（受限功能）
         UserMainWindow w(db, ctrl, loginDlg.getUsername());
         w.show();
         return app.exec();
