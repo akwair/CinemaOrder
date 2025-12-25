@@ -573,7 +573,6 @@ void MainWindow::onSort()
     fieldMap[tr("影厅")] = "hall";
     fieldMap[tr("容量")] = "capacity";
     fieldMap[tr("已售")] = "sold";
-    fieldMap[tr("剩余")] = "remain";
 
     QStringList items = fieldMap.keys();
     bool ok; QString choice = QInputDialog::getItem(this, tr("排序"), tr("依据:"), items, 0, false, &ok);

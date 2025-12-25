@@ -1,5 +1,4 @@
 #include <QApplication>
-#include <QDebug>
 #include "model/database.h"
 #include "controller/ticketcontroller.h"
 #include "view/mainwindow.h"
@@ -35,7 +34,6 @@ int main(int argc, char **argv)
     QString appDir = QCoreApplication::applicationDirPath();
     QString dbPath = QDir(appDir).absoluteFilePath("../tickets.db");
     dbPath = QDir::cleanPath(dbPath); // 规范化路径
-    qDebug() << "Using database:" << dbPath;
 
     // 初始化数据库连接
     Database db(dbPath);

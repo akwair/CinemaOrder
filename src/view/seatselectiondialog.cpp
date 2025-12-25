@@ -135,9 +135,7 @@ void SeatSelectionDialog::loadSeats(int ticketId)
         s.userPhoneNumber = q.value(7).toString();
         s.userEmail = q.value(8).toString();
         m_seats.append(s);
-        qDebug() << "Loaded seat:" << s.label << ", status:" << s.status;
     }
-    qDebug() << "Total loaded seats:" << m_seats.size();
 }
 
 // 座位按钮：选中/取消

@@ -4,7 +4,6 @@
 #include <QtSql/QSqlError>
 #include <QTextStream>
 #include <QFile>
-#include <QDebug>
 #include <QStringList>
 #include <QList>
 #include <iostream>

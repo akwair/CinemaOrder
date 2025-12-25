@@ -361,7 +361,7 @@ void UserMainWindow::onViewMyTickets()
 {
     QDialog dlg(this);
     dlg.setWindowTitle("我的票务");
-    dlg.resize(800, 600);
+    dlg.resize(400, 300);
 
     QVBoxLayout *layout = new QVBoxLayout(&dlg);
 

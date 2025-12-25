@@ -3,7 +3,6 @@
 #include <QtSql/QSqlQuery>
 #include <QtSql/QSqlError>
 #include <QCryptographicHash>
-#include <QDebug>
 
 // 构造函数：传入数据库引用
 AuthManager::AuthManager(Database &db)
