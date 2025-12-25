@@ -1,6 +1,7 @@
 #include "mainwindow.h"
 #include "seatselectiondialog.h"
 #include "moviedetaildialog.h"
+#include "../auth/authmanager.h"
 #include <QAction>
 #include <QToolBar>
 #include <QAction>
@@ -46,6 +47,8 @@ MainWindow::MainWindow(Database &db, TicketController &controller, const QString
     , m_model(new QSqlTableModel(this, db.db()))      
     , m_db(db)
     , m_username(username)                                       
+    , m_auth(new AuthManager(db)) // Initialize auth
+    , m_role(0) // Initialize m_role
 {
     //数据模型设置
     m_model->setTable("tickets");      // 设置模型关联数据库中的"tickets"表
@@ -174,7 +177,7 @@ MainWindow::MainWindow(Database &db, TicketController &controller, const QString
     // 创建工具栏动作用于显示/隐藏边栏
     m_toggleDockAction = new QAction(tr("功能"), this);
     m_toggleDockAction->setCheckable(true);                     // 设置为可勾选（切换状态）
-    m_toggleDockAction->setChecked(m_sideDock->isVisible());    // 初始状态与边栏可见性同步
+    m_toggleDockAction->setChecked(m_sideDock->isVisible());    // 初
     connect(m_toggleDockAction, &QAction::toggled, m_sideDock, &QWidget::setVisible); // 动作触发边栏显示/隐藏
     connect(m_sideDock, &QDockWidget::visibilityChanged, m_toggleDockAction, &QAction::setChecked); // 边栏变化同步动作状态
     
@@ -335,7 +338,7 @@ void MainWindow::onSell()
 
     // 显示座位选择对话框，让用户选择具体的座位
     // 参数：数据库连接、场次ID、总座位数
-    SeatSelectionDialog dlg(m_db, id, capacity,0, m_username, this);
+    SeatSelectionDialog dlg(m_db, id, capacity,0, m_username, true, this);
     
     // 如果用户取消选择（点击取消按钮），则直接返回
     if (dlg.exec() != QDialog::Accepted) return;
@@ -409,87 +412,64 @@ void MainWindow::onSell()
 // 退票操作：用户选择退回的座位并更新状态
 void MainWindow::onRefund()
 {
-    // 获取主窗口中的表格视图控件
     auto *view = qobject_cast<QTableView*>(centralWidget()); 
-    
-    // 如果无法获取表格视图，直接返回
     if (!view) return;
-    
-    // 检查用户是否在表格中选择了某一行（即选择了某个电影场次）
-    if (!view->selectionModel()->hasSelection()) { 
-        // 如果没有选中任何行，显示提示信息并返回
-        QMessageBox::information(this, "提示", "请选择场次"); 
-        return; 
-    }
-    
-    int row = view->selectionModel()->selectedRows().first().row();// 获取选中行的行号（用户选择的场次所在的行）
-    int id = m_model->data(m_model->index(row, m_model->fieldIndex("id"))).toInt();// 从数据模型中获取选中行的场次ID
-    int capacity = m_model->data(m_model->index(row, m_model->fieldIndex("capacity"))).toInt(); // 场次总座位数
-    int sold = m_model->data(m_model->index(row, m_model->fieldIndex("sold"))).toInt();       // 已售座位数
-    
-    if (sold==0) { 
-        QMessageBox::information(this, "提示", "该场次无可退票"); 
+
+    auto sel = view->selectionModel();
+    if (!sel->hasSelection()) { 
+        QMessageBox::information(this, "提示", "请先选择一行"); 
         return; 
     }
 
-    QDateTime currentDateTime = QDateTime::currentDateTime();
-    if(currentDateTime.date() > m_model->data(m_model->index(row, m_model->fieldIndex("showDate"))).toDate() ||
-       (currentDateTime.date() == m_model->data(m_model->index(row, m_model->fieldIndex("showDate"))).toDate() &&
-        currentDateTime.time() > m_model->data(m_model->index(row, m_model->fieldIndex("showTime"))).toTime())){
-        QMessageBox::information(this, "提示", "该场次已开始，无法退票");
+    int row = sel->selectedRows().first().row();
+    int id = m_model->data(m_model->index(row, m_model->fieldIndex("id"))).toInt();
+    int capacity = m_model->data(m_model->index(row, m_model->fieldIndex("capacity"))).toInt();
+    int sold = m_model->data(m_model->index(row, m_model->fieldIndex("sold"))).toInt();
+
+    if (sold == 0) {
+        QMessageBox::information(this, "提示", "该场次无可退票");
         return;
     }
 
-    SeatSelectionDialog dlg(m_db, id, capacity,1, m_username, this);
+    // 管理员可以退任何票，传入 isAdmin=true
+    SeatSelectionDialog dlg(m_db, id, capacity, 1, m_username, true, this);
     if (dlg.exec() != QDialog::Accepted) return;
-    
-    QSqlDatabase db = m_model->database();
 
     auto seats = dlg.selectedSeats();
-
-    if(seats.isEmpty()) return;
+    if (seats.isEmpty()) return;
 
     int toRefund = seats.size();
 
-    if (sold-toRefund < 0) { 
-        QMessageBox::warning(this, "退票失败", "选择的座位超过已售票数"); 
-        return; 
-    }
-    
-    // 开启事务：接下来的所有数据库操作要么全部成功，要么全部失败
+    QSqlDatabase db = m_model->database();
     db.transaction();
+
     QSqlQuery q1(db);
-    
     q1.prepare("UPDATE seats SET status=0 WHERE id = ? AND status=1");
     
-    
-    // 执行SQL更新语句，并检查执行结果
-    for(const auto &s:seats){
+    for(const auto &s : seats){
         q1.addBindValue(s.id);
         if(!q1.exec()){
             qWarning() << "退票失败:" << q1.lastError().text();
         }
         q1.finish();
     }
-    
-    //准备sql语句二
-    QSqlQuery q2(db);
-    q2.prepare("UPDATE tickets SET sold=sold-?, remain=remain+? WHERE id=? AND sold-?>=0");
 
+    QSqlQuery q2(db);
+    q2.prepare("UPDATE tickets SET sold = sold - ?, remain = remain + ? WHERE id = ? AND sold - ? >= 0");
     q2.addBindValue(toRefund);
     q2.addBindValue(toRefund);
     q2.addBindValue(id);
     q2.addBindValue(toRefund);
-    // 无论成功或失败，都刷新表格视图，显示最新的数据
 
-    bool ok = q2.exec();
-    if(!ok){
+    if (!q2.exec()) {
         db.rollback();
-        QMessageBox::warning(this, "退票失败", "更新票务信息失败");
-    }else{
-        db.commit();
+        QMessageBox::warning(this, "错误", "更新票务信息失败: " + q2.lastError().text());
+        return;
     }
+
+    db.commit();
     refresh();
+    QMessageBox::information(this, "成功", "退票成功");
 }
 
 // 导入数据：从CSV文件恢复票务数据

@@ -207,7 +207,7 @@ void UserMainWindow::onBuyTicket()
         return;
     }
 
-    SeatSelectionDialog dlg(m_db, id, capacity, 0, m_username, this);
+    SeatSelectionDialog dlg(m_db, id, capacity, 0, m_username, false, this);
     if (dlg.exec() != QDialog::Accepted) return;
 
     auto seats = dlg.selectedSeats();
@@ -284,7 +284,7 @@ void UserMainWindow::onRefund()
         return;
     }
 
-    SeatSelectionDialog dlg(m_db, id, capacity, 1, m_username, this);
+    SeatSelectionDialog dlg(m_db, id, capacity, 1, m_username, false, this);
     if (dlg.exec() != QDialog::Accepted) return;
 
     QSqlDatabase db = m_model->database();

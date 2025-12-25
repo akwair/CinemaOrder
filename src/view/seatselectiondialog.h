@@ -23,7 +23,7 @@ class SeatSelectionDialog : public QDialog {
     Q_OBJECT
 public:
     // flag: 0=售票 1=退票
-    SeatSelectionDialog(Database &db, int ticketId, int capacity, int flag, const QString &username, QWidget *parent = nullptr);
+    SeatSelectionDialog(Database &db, int ticketId, int capacity, int flag, const QString &username, bool isAdmin = false, QWidget *parent = nullptr);
     // 获取选中座位列表
     QVector<SeatInfo> selectedSeats() const { return m_selected; }
 private slots:
@@ -39,6 +39,7 @@ private:
     int m_ticketId;              // 票务ID
     int m_flag;                  // 操作类型(0售 1退)
     QString m_username;          // 当前用户
+    bool m_isAdmin;              // 是否管理员
     QVector<SeatInfo> m_seats;   // 所有座位
     QVector<SeatInfo> m_selected;// 选中座位
 };

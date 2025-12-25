@@ -3,6 +3,7 @@
 class QSqlTableModel;
 class TicketController;
 class Database;
+class AuthManager;
 
 // 管理员主窗口
 class MainWindow : public QMainWindow {
@@ -56,4 +57,6 @@ private:
     bool m_targetDark = false;
     class QPushButton *m_searchBtn = nullptr;
     bool issearched=false;
+    AuthManager *m_auth = nullptr;
+    int m_role = 0;
 };

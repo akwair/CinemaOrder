@@ -13,8 +13,8 @@
 
 
 // 构造函数：创建座位选择对话框（flag:0售票 1退票）
-SeatSelectionDialog::SeatSelectionDialog(Database &db, int ticketId, int capacity, int flag, const QString &username, QWidget *parent)
-    : QDialog(parent), m_db(db), m_ticketId(ticketId), m_flag(flag), m_username(username)
+SeatSelectionDialog::SeatSelectionDialog(Database &db, int ticketId, int capacity, int flag, const QString &username, bool isAdmin, QWidget *parent)
+    : QDialog(parent), m_db(db), m_ticketId(ticketId), m_flag(flag), m_username(username), m_isAdmin(isAdmin)
 {
     setWindowTitle(tr("选择座位"));
     qDebug() << "SeatSelectionDialog: ticketId=" << ticketId << ", capacity=" << capacity << ", flag=" << flag;
@@ -43,10 +43,26 @@ SeatSelectionDialog::SeatSelectionDialog(Database &db, int ticketId, int capacit
                 btn->setToolTip("已售出");
                 btn->installEventFilter(this); // 启用悬停事件
             }
-            else if (s.status==0&&flag==1) {
-                btn->setEnabled(false);
-                btn->setStyleSheet("background: #c0c0c0; color: #fff;");
-            } 
+            else if (flag == 1) { // 退票模式
+                if (s.status == 0) {
+                    // 未售出，不可退
+                    btn->setEnabled(false);
+                    btn->setStyleSheet("background: #c0c0c0; color: #fff;");
+                } else {
+                    // 已售出，检查权限
+                    // 如果是管理员，或者座位属于当前用户，则允许退票
+                    if (m_isAdmin || s.username == m_username) {
+                        btn->setCheckable(true);
+                        btn->setStyleSheet("background: #e8f0ff;");
+                        connect(btn, &QPushButton::clicked, this, &SeatSelectionDialog::toggleSeat);
+                    } else {
+                        // 不属于当前用户且非管理员
+                        btn->setEnabled(false);
+                        btn->setStyleSheet("background: #c05050; color: #fff;"); // 显示为红色（别人的票）
+                        btn->setToolTip("非本人购买，无法退票");
+                    }
+                }
+            }
             else {
                 btn->setCheckable(true);
                 btn->setStyleSheet("background: #e8f0ff;");
