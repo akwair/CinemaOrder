@@ -196,9 +196,15 @@ bool SeatSelectionDialog::eventFilter(QObject *obj, QEvent *event)
             if (idx >= 0 && idx < m_seats.size()) {
                 const SeatInfo &s = m_seats[idx];
                 if (s.status == 1) { // 仅显示已售座位信息
-                    QString info = QString("座位: %1\n用户名: %2\n购买者: %3\n电话: %4\n邮箱: %5")
-                                   .arg(s.label, s.username, s.userFullName, s.userPhoneNumber, s.userEmail);
-                    btn->setToolTip(info);
+                    // 管理员可以查看所有座位信息，普通用户只能查看自己的座位信息
+                    if (m_isAdmin || s.username == m_username) {
+                        QString info = QString("座位: %1\n用户名: %2\n购买者: %3\n电话: %4\n邮箱: %5")
+                                       .arg(s.label, s.username, s.userFullName, s.userPhoneNumber, s.userEmail);
+                        btn->setToolTip(info);
+                    } else {
+                        // 普通用户查看他人座位，仅显示座位号和已售出状态
+                        btn->setToolTip(QString("座位: %1\n状态: 已售出").arg(s.label));
+                    }
                 }
             }
         }
