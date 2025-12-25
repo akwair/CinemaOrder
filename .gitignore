@@ -87,3 +87,7 @@ Thumbs.db
 # Linux
 *~
 \#*
+
+#数据库储存
+*.db
+*.sqlite
