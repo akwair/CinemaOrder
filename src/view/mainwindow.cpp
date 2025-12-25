@@ -90,6 +90,14 @@ MainWindow::MainWindow(Database &db, TicketController &controller, const QString
     int remainCol = m_model->fieldIndex("remain");
     if (remainCol >= 0) view->hideColumn(remainCol);
 
+    // 隐藏created_at列（不显示创建时间）
+    int createdAtCol = m_model->fieldIndex("created_at");
+    if (createdAtCol >= 0) view->hideColumn(createdAtCol);
+
+    // 隐藏updated_at列（不显示更新时间）
+    int updatedAtCol = m_model->fieldIndex("updated_at");
+    if (updatedAtCol >= 0) view->hideColumn(updatedAtCol);
+
     // 设置中文列头
     auto setHeader = [&](const char *field, const char *zh){
         int col = m_model->fieldIndex(field);
@@ -238,13 +246,53 @@ void MainWindow::onAdd()
 // 删除场次：永久删除指定票务
 void MainWindow::onDelete()
 {
-    auto *view = qobject_cast<QTableView*>(centralWidget()); if (!view) return;
+    auto *view = qobject_cast<QTableView*>(centralWidget()); 
+    if (!view) return;
     auto sel = view->selectionModel();
-    if (!sel->hasSelection()) { QMessageBox::information(this, "提示", "请先选择一行"); return; }
+    if (!sel->hasSelection()) { 
+        QMessageBox::information(this, "提示", "请先选择一行"); 
+        return; 
+    }
+    
     int row = sel->selectedRows().first().row();
-    m_model->removeRow(row);
-    m_model->submitAll();
+    int id = m_model->data(m_model->index(row, m_model->fieldIndex("id"))).toInt();
+    QString movieName = m_model->data(m_model->index(row, m_model->fieldIndex("movieName"))).toString();
+    
+    // 确认删除
+    if (QMessageBox::question(this, "确认删除", 
+            QString("确定要删除电影「%1」吗？\n相关的座位记录也会被删除。").arg(movieName),
+            QMessageBox::Yes | QMessageBox::No) != QMessageBox::Yes) {
+        return;
+    }
+    
+    // 使用事务删除：先删除关联的 seats，再删除 ticket
+    QSqlDatabase db = m_model->database();
+    db.transaction();
+    
+    QSqlQuery q(db);
+    // 先删除关联的座位记录
+    q.prepare("DELETE FROM seats WHERE ticket_id = ?");
+    q.addBindValue(id);
+    if (!q.exec()) {
+        qWarning() << "Delete seats failed:" << q.lastError().text();
+        db.rollback();
+        QMessageBox::warning(this, "删除失败", "无法删除关联的座位记录");
+        return;
+    }
+    
+    // 再删除票务记录
+    q.prepare("DELETE FROM tickets WHERE id = ?");
+    q.addBindValue(id);
+    if (!q.exec()) {
+        qWarning() << "Delete ticket failed:" << q.lastError().text();
+        db.rollback();
+        QMessageBox::warning(this, "删除失败", "无法删除电影场次");
+        return;
+    }
+    
+    db.commit();
     refresh();
+    QMessageBox::information(this, "成功", "电影场次已删除");
 }
 
 //售票槽函数

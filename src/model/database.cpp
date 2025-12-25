@@ -62,9 +62,7 @@ bool Database::ensureTables()
         capacity INTEGER,
         remain INTEGER,
         sold INTEGER,
-        movie_details TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        movie_details TEXT
     )
 )";
     if (!q.exec(sql)) {
@@ -77,9 +75,7 @@ bool Database::ensureTables()
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT UNIQUE,
         password_hash TEXT,
-        role INTEGER DEFAULT 0,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        role INTEGER DEFAULT 0
     )
 )";
     if (!q.exec(usersSql)) {
@@ -120,11 +116,7 @@ bool Database::ensureTables()
         row INTEGER,
         col INTEGER,
         label TEXT,
-        status INTEGER DEFAULT 0,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY(ticket_id) REFERENCES tickets(id) ON DELETE CASCADE,
-        FOREIGN KEY(username) REFERENCES users(username) ON DELETE SET NULL
+        status INTEGER DEFAULT 0
     )
 )";
     if (!q.exec(seatsSql)) {

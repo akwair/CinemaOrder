@@ -30,8 +30,15 @@ int main(int argc, char **argv)
     )";
     // 应用样式表
     app.setStyleSheet(style);
+
+    // 数据库路径：始终使用项目根目录（build 的上一级）下的 tickets.db
+    QString appDir = QCoreApplication::applicationDirPath();
+    QString dbPath = QDir(appDir).absoluteFilePath("../tickets.db");
+    dbPath = QDir::cleanPath(dbPath); // 规范化路径
+    qDebug() << "Using database:" << dbPath;
+
     // 初始化数据库连接
-    Database db("tickets.db");
+    Database db(dbPath);
     if (!db.open()) {
         qCritical() << "无法打开数据库";
         return 1;

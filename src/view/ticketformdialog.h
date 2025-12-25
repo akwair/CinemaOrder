@@ -34,7 +34,6 @@ private:
     QLineEdit *m_actors;            // 主演
     QLineEdit *m_genre;             // 电影类型
     QDoubleSpinBox *m_rating;       // 评分
-    QLineEdit *m_poster;            // 海报路径
     
     int flag;   // 区分售票(0)还是退票(1)
 };

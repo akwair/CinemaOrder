@@ -73,16 +73,12 @@ TicketFormDialog::TicketFormDialog(QWidget *parent)
     m_rating->setSingleStep(0.1);
     m_rating->setDecimals(1);
     detailLayout->addRow("评分:", m_rating);
-    
-    m_poster = new QLineEdit();
-    m_poster->setPlaceholderText("海报文件路径...");
-    detailLayout->addRow("海报:", m_poster);
-    
+
     m_description = new QTextEdit();
     m_description->setMaximumHeight(80);
     m_description->setPlaceholderText("输入电影剧情简介...");
     detailLayout->addRow("剧情简介:", m_description);
-    
+
     lay->addWidget(detailGroup);
 
     auto *btnRow = new QHBoxLayout();
@@ -115,7 +111,6 @@ void TicketFormDialog::setTicket(const Ticket &t)
     m_actors->clear();
     m_genre->clear();
     m_rating->setValue(0.0);
-    m_poster->clear();
 }
 
 Ticket TicketFormDialog::ticket() const
