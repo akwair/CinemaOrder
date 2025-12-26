@@ -59,7 +59,7 @@ int main(int argc, char **argv)
         w.show();
         return app.exec();
     } else {
-        // 普通用户窗口（受限功能）
+        // 普通用户窗口
         UserMainWindow w(db, ctrl, loginDlg.getUsername());
         w.show();
         return app.exec();

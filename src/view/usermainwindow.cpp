@@ -33,6 +33,8 @@
 #include <QTableWidget>
 #include "../model/database.h"
 #include <QMap>
+#include <QPalette>
+#include <QLinearGradient>
 
 // 构造函数：创建普通用户主窗口
 UserMainWindow::UserMainWindow(Database &db, TicketController &controller, const QString &username, QWidget *parent)
@@ -171,6 +173,15 @@ UserMainWindow::UserMainWindow(Database &db, TicketController &controller, const
     m_settings = new QSettings("CinemaOrder", "CinemaApp", this);
     m_darkTheme = m_settings->value("ui/dark", false).toBool();
     applyTheme(m_darkTheme);
+
+    // 设置主界面渐变背景
+    QPalette pal = palette();
+    QLinearGradient gradient(0, 0, 0, height());
+    gradient.setColorAt(0.0, QColor(80, 120, 200)); // 顶部蓝色
+    gradient.setColorAt(1.0, QColor(180, 120, 220)); // 底部紫色
+    pal.setBrush(QPalette::Window, gradient);
+    setAutoFillBackground(true);
+    setPalette(pal);
 }
 
 void UserMainWindow::refresh()

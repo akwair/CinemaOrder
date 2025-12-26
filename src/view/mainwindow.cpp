@@ -205,6 +205,15 @@ MainWindow::MainWindow(Database &db, TicketController &controller, const QString
     m_settings = new QSettings("CinemaOrder", "CinemaApp", this); // 创建设置对象
     m_darkTheme = m_settings->value("ui/dark", false).toBool();   // 从设置读取主题偏好，默认浅色主题
     applyTheme(m_darkTheme);                            // 立即应用保存的主题（无动画）
+
+    // 设置主界面渐变背景
+    QPalette pal = palette();
+    QLinearGradient gradient(0, 0, 0, height());
+    gradient.setColorAt(0.0, QColor(40, 60, 120)); // 顶部深蓝
+    gradient.setColorAt(1.0, QColor(80, 40, 120)); // 底部深紫
+    pal.setBrush(QPalette::Window, gradient);
+    setAutoFillBackground(true);
+    setPalette(pal);
 }
 
 void MainWindow::refresh()
@@ -212,7 +221,7 @@ void MainWindow::refresh()
     m_model->select();
 }
 
-// 新增场次：调用表单对话框
+// 新增场次
 void MainWindow::onAdd()
 {
     // 使用表单对话框添加新场次
@@ -236,13 +245,8 @@ void MainWindow::onAdd()
     refresh();
     // 清空选中状态
     auto *view = qobject_cast<QTableView*>(centralWidget());
-    if (view && view->selectionModel()) {
-        qDebug() << "当前选中行数:" << view->selectionModel()->selectedRows().size();
-        qDebug() << "清除前选中行:" << view->selectionModel()->selectedRows();
-        
+    if (view && view->selectionModel()) {        
         view->selectionModel()->clearSelection();
-        
-        qDebug() << "清除后选中行数:" << view->selectionModel()->selectedRows().size();
     }
 }
 

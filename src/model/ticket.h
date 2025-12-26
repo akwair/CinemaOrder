@@ -14,7 +14,6 @@ struct Ticket {
     int capacity = 0;               // 座位总数
     int remain=0;                   // 剩余座位数
     int sold = 0;                   // 已售座位数
-    
-    // 电影详情(合并字段)
+    // 电影详情
     QString movieDetails;           // 导演、演员、类型等
 };

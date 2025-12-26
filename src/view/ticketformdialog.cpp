@@ -84,7 +84,9 @@ TicketFormDialog::TicketFormDialog(QWidget *parent)
     auto *btnRow = new QHBoxLayout();
     auto *ok = new QPushButton("确定");
     auto *cancel = new QPushButton("取消");
-    btnRow->addStretch(); btnRow->addWidget(ok); btnRow->addWidget(cancel);
+    btnRow->addStretch(); 
+    btnRow->addWidget(ok); 
+    btnRow->addWidget(cancel);
     lay->addLayout(btnRow);
 
     connect(ok, &QPushButton::clicked, this, &TicketFormDialog::onAccept);

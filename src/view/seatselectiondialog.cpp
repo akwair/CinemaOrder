@@ -117,9 +117,7 @@ void SeatSelectionDialog::ensureSeatsCreated(int ticketId, int capacity)
             ins.addBindValue(label);
             if (!ins.exec()) {
                 qWarning() << "insert seat failed:" << ins.lastError().text();
-            } else {
-                qDebug() << "Created seat:" << label;
-            }
+            } 
             ins.finish();
             ++created;
         }

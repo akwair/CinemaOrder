@@ -1,4 +1,6 @@
 #include "userinfodialog.h"
+#include <QRegularExpression>
+#include <QRegularExpressionValidator>
 
 // 构造函数：创建用户信息输入表单
 UserInfoDialog::UserInfoDialog(QWidget *parent)
@@ -10,6 +12,11 @@ UserInfoDialog::UserInfoDialog(QWidget *parent)
     m_fullName = new QLineEdit(this);
     m_phoneNumber = new QLineEdit(this);
     m_email = new QLineEdit(this);
+    // 正则约束邮箱和电话输入格式
+    const QRegularExpression phonePattern("^\\+?\\d{7,15}$");
+    m_phoneNumber->setValidator(new QRegularExpressionValidator(phonePattern, this));
+    const QRegularExpression emailPattern("^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$");
+    m_email->setValidator(new QRegularExpressionValidator(emailPattern, this));
     // 设置占位符提示
     m_fullName->setPlaceholderText("姓名");
     m_phoneNumber->setPlaceholderText("电话");

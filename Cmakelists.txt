@@ -44,7 +44,12 @@ file(GLOB_RECURSE SRC_FILES
 	src/*/*.cpp
 )
 
-add_executable(cinema_order ${SRC_FILES})
+if(WIN32)
+	set(APP_ICON_RESOURCE "${CMAKE_SOURCE_DIR}/resources/cinema.rc")
+	add_executable(cinema_order WIN32 ${SRC_FILES} ${APP_ICON_RESOURCE})
+else()
+	add_executable(cinema_order ${SRC_FILES})
+endif()
 target_include_directories(cinema_order PRIVATE 
 	src
 	src/view
