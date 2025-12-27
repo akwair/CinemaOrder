@@ -55,11 +55,11 @@ MainWindow::MainWindow(Database &db, TicketController &controller, const QString
     m_model->select();                 // 从数据库加载数据到模型
     qDebug() << "数据库表字段列表:";
     // 正确的调试代码
-    for (int i = 0; i < m_model->columnCount(); ++i) {
-        qDebug() << i << ":" 
-                << m_model->headerData(i, Qt::Horizontal).toString();
-    }
-    qDebug() << "数据库文件位置:" << db.db().databaseName();
+    // for (int i = 0; i < m_model->columnCount(); ++i) {
+    //     qDebug() << i << ":" 
+    //             << m_model->headerData(i, Qt::Horizontal).toString();
+    // }
+    // qDebug() << "数据库文件位置:" << db.db().databaseName();
 
     //表格视图创建与设置
     auto *view = new QTableView(this);                 // 创建表格视图
@@ -494,7 +494,7 @@ void MainWindow::onExport()
 }
 
 // 查询功能：按电影名/影院/日期/时间筛选票务
-void MainWindow::onSearch()
+void MainWindow::                                                                                                                                onSearch()
 {
     // 创建查找类型选择对话框
     QStringList searchTypes;

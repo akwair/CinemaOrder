@@ -34,7 +34,7 @@ int main(int argc, char **argv)
     QString appDir = QCoreApplication::applicationDirPath();
     QString dbPath = QDir(appDir).absoluteFilePath("../tickets.db");
     dbPath = QDir::cleanPath(dbPath); // 规范化路径
-
+         
     // 初始化数据库连接
     Database db(dbPath);
     if (!db.open()) {

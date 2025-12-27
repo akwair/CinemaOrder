@@ -41,7 +41,13 @@ CinemaOrder/
 │       └── userinfodialog.*      # 用户信息对话框
 ├── resources/             # 资源文件
 │   ├── resources.qrc      # Qt资源配置
-│   └── icons/             # SVG图标
+│   ├── icons/             # SVG图标
+│   └── image/             # 图片资源
+├── script/                # 数据初始化脚本
+│   ├── insert_movies.py   # 插入电影数据
+│   ├── insert_users.py    # 插入用户数据
+│   ├── movies.json        # 电影数据
+│   └── users.json         # 用户数据
 ├── build/                 # 构建输出目录（自动生成）
 ├── CMakeLists.txt         # CMake配置文件
 ├── README.md              # 项目说明文档
@@ -56,31 +62,30 @@ CinemaOrder/
 - **编译器**: MinGW-w64 / MSVC / GCC
 - **架构模式**: MVC (Model-View-Controller)
 
-快速构建（MSYS2 MINGW64）
+## 🛠️ 构建与运行
+
+### 配置与构建
+
+#### 配置项目
+运行以下命令以生成构建文件：
 
 ```bash
-cd /d/CinemaOrder
-mkdir -p build
-cd build
-# 若 Qt 安装在 /mingw64，CMake 会自动查找；可显式指定 -DQT_ROOT=/mingw64
-cmake .. -G "MinGW Makefiles" -DQT_ROOT=/mingw64
-mingw32-make -j$(nproc)
+cmake -S . -B build -G "MinGW Makefiles" -DQT_ROOT=/mingw64
 ```
 
-Windows PowerShell（使用 MinGW Makefiles）
+#### 构建项目
+运行以下命令以编译项目：
 
-```powershell
-cd D:\CinemaOrder
-mkdir build; cd build
-cmake .. -G "MinGW Makefiles" -DQT_ROOT=C:/msys64/mingw64
-mingw32-make
+```bash
+mingw32-make -C build -j2
 ```
 
-运行
+### 运行程序
 
-```powershell
-cd build
-.\cinema_order.exe
+构建完成后，运行以下命令启动程序：
+
+```bash
+build\cinema_order.exe
 ```
 
 ## ❓ 常见问题
@@ -216,12 +221,5 @@ qApp->setStyleSheet(R"(
 - [CMake 文档](https://cmake.org/documentation/)
 - [SQLite 文档](https://www.sqlite.org/docs.html)
 
-## 💡 未来计划
 
-- [ ] 添加数据统计图表
-- [ ] 实现邮件通知功能
-- [ ] 支持多语言界面
-- [ ] 添加打印票据功能
-- [ ] 实现在线支付接口
-- [ ] 移动端应用支持
 
